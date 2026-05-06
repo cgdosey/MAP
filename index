@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mutual Action Plan Builder</title>
+<style>
+  :root {
+    --blue: #2563eb; --blue-light: #eff6ff;
+    --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+    --gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;
+    --gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;--gray-900:#111827;
+    --radius:8px; --sidebar-width:400px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-50);color:var(--gray-900);min-height:100vh;display:flex;flex-direction:column;}
+
+  /* NAV */
+  .topnav{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .topnav-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;color:var(--gray-900);}
+  .topnav-brand svg{color:var(--blue);}
+  .topnav-actions{display:flex;gap:8px;align-items:center;}
+  /* VIEW TOGGLE */
+  .view-toggle{display:flex;border:1px solid var(--gray-300);border-radius:6px;overflow:hidden;}
+  .view-btn{padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:#fff;color:var(--gray-500);font-family:inherit;transition:background .12s,color .12s;}
+  .view-btn:first-child{border-right:1px solid var(--gray-300);}
+  .view-btn.active{background:var(--blue);color:#fff;}
+  .view-btn:not(.active):hover{background:var(--gray-100);}
+
+  /* BUTTONS */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background .15s;font-family:inherit;}
+  .btn-primary{background:var(--blue);color:#fff;} .btn-primary:hover{background:#1d4ed8;}
+  .btn-outline{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300);} .btn-outline:hover{background:var(--gray-50);}
+  .btn-ghost{background:transparent;color:var(--gray-600);} .btn-ghost:hover{background:var(--gray-100);}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+  .btn-xs{padding:3px 8px;font-size:11.5px;}
+  .btn-full{width:100%;justify-content:center;}
+  .btn-green{background:#059669;color:#fff;} .btn-green:hover{background:#047857;}
+  .btn-purple{background:#7c3aed;color:#fff;} .btn-purple:hover{background:#6d28d9;}
+
+  /* LAYOUT */
+  .app-body{display:flex;flex:1;}
+
+  /* SIDEBAR */
+  .sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background:#fff;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;height:calc(100vh - 54px);position:sticky;top:54px;overflow-y:auto;}
+  .sidebar-inner{padding:16px 16px 28px;display:flex;flex-direction:column;gap:12px;flex:1;}
+  .section-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400);margin-bottom:6px;}
+
+  /* TEXTAREA */
+  .plan-textarea{width:100%;min-height:260px;padding:11px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:12px;line-height:1.7;font-family:'SF Mono','Fira Code',Menlo,Consolas,monospace;color:var(--gray-800);background:var(--gray-50);resize:vertical;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .plan-textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fff;}
+  .plan-textarea::placeholder{color:var(--gray-400);font-style:italic;}
+
+  /* FORMAT GUIDE */
+  .guide-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:500;color:var(--blue);background:none;border:none;padding:0;font-family:inherit;}
+  .guide-toggle:hover{text-decoration:underline;}
+  .guide-panel{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);padding:11px 13px;font-size:11.5px;line-height:1.75;color:var(--gray-700);display:none;margin-top:8px;}
+  .guide-panel.open{display:block;}
+  .guide-panel code{background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+  .guide-panel p{margin-bottom:7px;} .guide-panel p:last-child{margin-bottom:0;}
+
+  /* QUICK-ADD PANELS */
+  .qadd-section{border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden;}
+  .qadd-header{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--gray-50);cursor:pointer;user-select:none;}
+  .qadd-header:hover{background:var(--gray-100);}
+  .qadd-header-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--gray-700);}
+  .qadd-header-chevron{color:var(--gray-400);transition:transform .2s;}
+  .qadd-header-chevron.open{transform:rotate(180deg);}
+  .qadd-body{display:none;padding:12px;border-top:1px solid var(--gray-200);background:#fff;}
+  .qadd-body.open{display:block;}
+
+  .form-row{display:grid;gap:8px;margin-bottom:8px;}
+  .form-row.cols-2{grid-template-columns:1fr 1fr;}
+  .form-row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .form-group{display:flex;flex-direction:column;gap:3px;}
+  .form-group label{font-size:11px;font-weight:500;color:var(--gray-500);}
+  .form-group input,.form-group select{padding:5px 8px;border:1px solid var(--gray-300);border-radius:5px;font-size:12px;color:var(--gray-900);background:#fff;outline:none;font-family:inherit;}
+  .form-group input:focus,.form-group select:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1);}
+  .party-toggle{display:flex;gap:4px;}
+  .party-btn{flex:1;padding:5px 4px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--gray-300);border-radius:5px;background:#fff;color:var(--gray-600);text-align:center;transition:all .15s;font-family:inherit;}
+  .party-btn.active-us{background:#dbeafe;border-color:#93c5fd;color:#1e40af;}
+  .party-btn.active-them{background:#dcfce7;border-color:#86efac;color:#166534;}
+  .party-btn.active-joint{background:#fef3c7;border-color:#fcd34d;color:#92400e;}
+
+  /* ERRORS / SUCCESS */
+  .parse-errors{background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:#991b1b;display:none;}
+  .parse-errors.show{display:block;}
+  .parse-preview{background:#f0fdf4;border:1px solid #86efac;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:#166534;display:none;align-items:center;gap:7px;}
+  .parse-preview.show{display:flex;}
+
+  /* MAIN */
+  .main{flex:1;padding:24px 26px;overflow-x:auto;min-width:0;}
+
+  /* PLAN HEADER */
+  .plan-header{margin-bottom:20px;}
+  .plan-header h1{font-size:21px;font-weight:700;}
+  .plan-header .subtitle{font-size:13px;color:var(--gray-500);margin-top:4px;max-width:620px;}
+  .plan-meta{display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;}
+  .plan-meta-item{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--gray-600);}
+  .plan-meta-item strong{color:var(--gray-900);}
+
+  /* SUMMARY */
+  .summary-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .summary-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 14px;flex:1;min-width:90px;}
+  .summary-card .val{font-size:22px;font-weight:700;}
+  .summary-card .lbl{font-size:11px;color:var(--gray-400);margin-top:1px;}
+
+  /* LEGEND */
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:9px 13px;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-600);}
+  .legend-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+
+  /* GANTT */
+  .gantt-wrap{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);overflow-x:auto;}
+  .gantt-inner{min-width:680px;}
+
+  .gantt-header{display:flex;border-bottom:2px solid var(--gray-200);background:var(--gray-50);position:sticky;top:0;z-index:10;}
+  .gantt-label-col{width:220px;min-width:220px;padding:9px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);border-right:1px solid var(--gray-200);}
+  .gantt-timeline-col{flex:1;position:relative;}
+  .gantt-weeks{display:flex;height:100%;}
+  .gantt-week{flex:1;padding:9px 5px;font-size:10px;font-weight:500;color:var(--gray-500);border-right:1px solid var(--gray-200);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gantt-week:last-child{border-right:none;}
+
+  /* PHASE ROW */
+  .gantt-phase-row{display:flex;border-top:2px solid var(--gray-200);border-bottom:1px solid var(--gray-200);}
+  .gantt-phase-label{width:220px;min-width:220px;padding:9px 14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
+  .gantt-phase-label .ph-name{font-size:12px;font-weight:700;}
+  .gantt-phase-label .ph-dates{font-size:10.5px;color:var(--gray-400);margin-top:1px;}
+  .gantt-phase-timeline{flex:1;position:relative;min-height:38px;display:flex;align-items:center;overflow:hidden;}
+
+  /* PHASE BAR (spans start to end) */
+  .phase-bar{position:absolute;height:14px;border-radius:3px;opacity:.18;pointer-events:none;}
+  .phase-bar-border{position:absolute;height:14px;border-radius:3px;border:1.5px solid;opacity:.5;pointer-events:none;background:transparent;}
+
+  /* Diamond end marker */
+  .ms-diamond{position:absolute;top:50%;width:11px;height:11px;border-radius:2px;transform:translate(-50%,-50%) rotate(45deg);z-index:2;}
+
+  /* TASK ROWS */
+  .gantt-row{display:flex;border-bottom:1px solid var(--gray-100);min-height:38px;}
+  .gantt-row.subtask-row{min-height:32px;background:rgba(0,0,0,.012);}
+  .gantt-row:last-child{border-bottom:none;}
+  .gantt-row:hover{background:rgba(0,0,0,.018);}
+
+  .gantt-task-label{width:220px;min-width:220px;padding:6px 12px 6px 22px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
+  .gantt-task-label.subtask{padding-left:36px;}
+  .gantt-task-label .task-name{font-size:12px;font-weight:500;color:var(--gray-800);line-height:1.3;}
+  .gantt-task-label .task-owner{font-size:10px;color:var(--gray-400);margin-top:1px;}
+  .gantt-task-label.subtask .task-name{font-size:11px;font-weight:400;color:var(--gray-600);}
+
+  .gantt-bar-area{flex:1;position:relative;display:flex;align-items:center;overflow:hidden;}
+  .gantt-grid-lines{position:absolute;inset:0;display:flex;pointer-events:none;}
+  .gantt-grid-line{flex:1;border-right:1px solid var(--gray-100);}
+  .gantt-grid-line:last-child{border-right:none;}
+
+  .gantt-bar{position:absolute;border-radius:4px;display:flex;align-items:center;padding:0 7px;font-size:10.5px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;min-width:4px;transition:opacity .15s;}
+  .gantt-bar{height:20px;}
+  .gantt-bar.subtask-bar{height:14px;border-radius:3px;opacity:.85;}
+  .gantt-bar:hover{opacity:.8;}
+
+  .today-line{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;opacity:.5;pointer-events:none;z-index:5;}
+
+  /* EMPTY */
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:72px 24px;text-align:center;color:var(--gray-400);}
+  .empty-state svg{margin-bottom:14px;opacity:.35;}
+  .empty-state h3{font-size:15px;font-weight:600;color:var(--gray-500);margin-bottom:6px;}
+  .empty-state p{font-size:13px;max-width:340px;line-height:1.6;}
+  .empty-state kbd{background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;padding:1px 6px;font-size:11.5px;font-family:monospace;color:var(--gray-700);}
+
+  @media print{.sidebar,.topnav-actions{display:none!important;}.main{padding:0;}.app-body{display:block;}}
+
+  /* TASK EDIT MODAL */
+  .task-edit-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:100px;}
+  .task-edit-overlay.open{display:flex;}
+  .task-edit-modal{background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.22);padding:22px 24px 18px;width:380px;max-width:95vw;position:relative;}
+  .task-edit-modal h3{font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .task-edit-modal h3 .edit-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.05em;}
+  .task-edit-close{position:absolute;top:14px;right:14px;background:none;border:none;cursor:pointer;color:var(--gray-400);padding:4px;border-radius:4px;line-height:0;}
+  .task-edit-close:hover{background:var(--gray-100);color:var(--gray-700);}
+  .modal-footer{display:flex;justify-content:space-between;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-100);}
+  .modal-footer-right{display:flex;gap:8px;}
+  .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;} .btn-danger:hover{background:#fecaca;}
+
+  /* PHASE EDIT */
+  .gantt-phase-label{cursor:pointer;transition:background .12s;}
+  .gantt-phase-label:hover{background:rgba(0,0,0,.03);}
+  .gantt-phase-label .ph-edit-hint{font-size:9.5px;color:var(--gray-300);margin-top:2px;font-style:italic;display:none;}
+  .gantt-phase-label:hover .ph-edit-hint{display:block;}
+  .color-swatches{display:flex;gap:6px;flex-wrap:wrap;}
+  .color-swatch{width:22px;height:22px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;}
+  .color-swatch:hover{transform:scale(1.15);}
+  .color-swatch.selected{border-color:var(--gray-700);}
+
+  /* BAR DRAG & CLICK */
+  .gantt-bar{cursor:pointer;}
+  .gantt-bar.is-dragging{opacity:.55;cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+  .gantt-task-label{cursor:pointer;transition:background .12s;}
+  .gantt-task-label:hover{background:rgba(37,99,235,.04);}
+  .gantt-bar:hover{filter:brightness(1.1);}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="14" x2="11" y2="14"/><line x1="13" y1="14" x2="16" y2="14"/>
+      <line x1="8" y1="18" x2="11" y2="18"/><line x1="13" y1="18" x2="16" y2="18"/>
+    </svg>
+    Mutual Action Plan
+  </div>
+  <div class="topnav-actions">
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-month" onclick="setView('month')">Monthly</button>
+      <button class="view-btn" id="btn-week" onclick="setView('week')">Weekly</button>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="window.print()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+  </div>
+</nav>
+
+<div class="app-body">
+<aside class="sidebar">
+<div class="sidebar-inner">
+
+  <!-- TEXTAREA -->
+  <div>
+    <div class="section-label">Plan description</div>
+    <textarea id="planText" class="plan-textarea" spellcheck="false" placeholder="Describe your plan here…"></textarea>
+  </div>
+
+  <!-- FORMAT GUIDE -->
+  <div>
+    <button class="guide-toggle" onclick="toggleGuide()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Format guide
+    </button>
+    <div class="guide-panel" id="guidePanel">
+      <p><strong>Header</strong> (top of plan):<br>
+      <code>Project: Name</code>  <code>Goal: …</code><br>
+      <code>Our Team: DocuSign</code>  <code>Their Team: Acme Corp</code><br>
+      <code>Start: June 1, 2026</code>  <code>End: July 26, 2026</code></p>
+      <p><strong>Phases</strong> — include a start &amp; end date:<br>
+      <code>Phase: Kickoff | June 1 - June 7</code><br>
+      <code>Phase: Integration (June 7 - June 21)</code><br>
+      Omit start → auto-continues from previous phase end.</p>
+      <p><strong>Tasks</strong> (under a phase):<br>
+      <code>- Task name, us (Owner), Jun 1–7</code><br>
+      Party: <code>us</code> · <code>them</code> · <code>joint</code></p>
+      <p><strong>Sub-tasks</strong> — indent 2+ spaces:<br>
+      <code>&nbsp;&nbsp;- Sub-task, us (Owner), Jun 1–3</code></p>
+      <p><strong>Dates</strong>: <code>June 1</code> · <code>Jun 1, 2026</code> · <code>6/1/2026</code> · <code>Week 3</code></p>
+    </div>
+  </div>
+
+  <!-- ERRORS / SUCCESS -->
+  <div class="parse-errors" id="parseErrors"></div>
+  <div class="parse-preview" id="parsePreview">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="parsePreviewText"></span>
+  </div>
+
+  <!-- QUICK-ADD: PHASE -->
+  <div class="qadd-section">
+    <div class="qadd-header" onclick="toggleQadd('phase')">
+      <div class="qadd-header-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span style="color:#7c3aed">Add Phase / Milestone</span>
+      </div>
+      <svg class="qadd-header-chevron" id="chevron-phase" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="qadd-body" id="qadd-phase">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phase Name</label>
+          <input type="text" id="qa-phase-name" placeholder="e.g. Integration" />
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="qa-phase-start" />
+        </div>
+        <div class="form-group">
+          <label>End / Due Date</label>
+          <input type="date" id="qa-phase-end" />
+        </div>
+      </div>
+      <button class="btn btn-purple btn-sm btn-full" onclick="insertPhase()">Insert Phase</button>
+    </div>
+  </div>
+
+  <!-- QUICK-ADD: TASK -->
+  <div class="qadd-section">
+    <div class="qadd-header" onclick="toggleQadd('task')">
+      <div class="qadd-header-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span style="color:#2563eb">Add Task / Sub-task</span>
+      </div>
+      <svg class="qadd-header-chevron" id="chevron-task" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="qadd-body" id="qadd-task">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Task Name</label>
+          <input type="text" id="qa-task-name" placeholder="e.g. Provide API credentials" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Responsible Party</label>
+          <div class="party-toggle">
+            <button class="party-btn active-us" id="pb-us" onclick="setParty('us')">Our Team</button>
+            <button class="party-btn" id="pb-them" onclick="setParty('them')">Their Team</button>
+            <button class="party-btn" id="pb-joint" onclick="setParty('joint')">Joint</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Owner Name</label>
+          <input type="text" id="qa-task-owner" placeholder="e.g. Jane Smith" />
+        </div>
+        <div class="form-group">
+          <label>Add under Phase</label>
+          <select id="qa-task-phase">
+            <option value="__end__">End of plan</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="qa-task-start" />
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="qa-task-end" />
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px;">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:7px;">
+          <input type="checkbox" id="qa-subtask" style="width:14px;height:14px;cursor:pointer;" />
+          <label for="qa-subtask" style="font-size:12px;cursor:pointer;color:var(--gray-600);">This is a sub-task (indented under previous task)</label>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm btn-full" onclick="insertTask()">Insert Task</button>
+    </div>
+  </div>
+
+  <!-- BUILD / EXAMPLE -->
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+    <button class="btn btn-primary btn-full" onclick="buildPlan()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Build Plan
+    </button>
+    <button class="btn btn-outline btn-full btn-sm" onclick="loadExample()">Load example plan</button>
+  </div>
+
+</div>
+</aside>
+
+<!-- TASK EDIT MODAL -->
+<div class="task-edit-overlay" id="taskEditOverlay">
+  <div class="task-edit-modal" id="taskEditModal">
+    <button class="task-edit-close" onclick="closeTaskEdit()" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit Task
+      <span class="edit-badge" id="editBadge" style="background:#dbeafe;color:#1e40af;">DocuSign</span>
+    </h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Task Name</label>
+        <input type="text" id="edit-task-name" placeholder="Task description" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Responsible Party</label>
+        <div class="party-toggle">
+          <button class="party-btn" id="edit-pb-us" onclick="setEditParty('us')"></button>
+          <button class="party-btn" id="edit-pb-them" onclick="setEditParty('them')"></button>
+          <button class="party-btn" id="edit-pb-joint" onclick="setEditParty('joint')">Joint</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Owner / Assignee</label>
+        <input type="text" id="edit-task-owner" placeholder="e.g. Jane Smith" />
+      </div>
+      <div class="form-group">
+        <label>Phase</label>
+        <select id="edit-task-phase"></select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="edit-task-start" />
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="edit-task-end" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-danger" onclick="deleteEditTask()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete
+      </button>
+      <div class="modal-footer-right">
+        <button class="btn btn-ghost btn-sm" onclick="closeTaskEdit()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="saveTaskEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE EDIT MODAL -->
+<div class="task-edit-overlay" id="phaseEditOverlay">
+  <div class="task-edit-modal" id="phaseEditModal">
+    <button class="task-edit-close" onclick="closePhaseEdit()" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Edit Phase
+    </h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Phase Name</label>
+        <input type="text" id="edit-phase-name" placeholder="Phase name" />
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Owner / Lead</label>
+        <input type="text" id="edit-phase-owner" placeholder="e.g. Jane Smith" />
+      </div>
+      <div class="form-group">
+        <label>Responsible Party</label>
+        <select id="edit-phase-party">
+          <option value="us">DocuSign</option>
+          <option value="them">Customer</option>
+          <option value="joint">Joint</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="edit-phase-start" />
+      </div>
+      <div class="form-group">
+        <label>End / Due Date</label>
+        <input type="date" id="edit-phase-end" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-swatches" id="phaseColorSwatches"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-danger" onclick="deletePhase()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete Phase
+      </button>
+      <div class="modal-footer-right">
+        <button class="btn btn-ghost btn-sm" onclick="closePhaseEdit()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="savePhaseEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="main" id="mainArea">
+  <div class="empty-state">
+    <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="7" y1="15" x2="11" y2="15"/><line x1="7" y1="19" x2="15" y2="19"/>
+    </svg>
+    <h3>Your timeline will appear here</h3>
+    <p>Describe your plan in the sidebar, then press <kbd>Build Plan</kbd>.<br>Or click <strong>Load example plan</strong> to see it in action.</p>
+  </div>
+</main>
+</div>
+
+<script>
+// ─── DATE UTILS ───────────────────────────────────────────────────────────────
+const MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d?`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`:''
+const fromIso=s=>{if(!s)return null;const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+const fmtDate=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''
+const fmtShort=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):''
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+
+function inferYear(mo,refYear,projStart){
+  const y=refYear||new Date().getFullYear();
+  const c=new Date(y,mo,1);
+  if(projStart&&c<projStart)return y+1;
+  return y;
+}
+
+function parseFlexDate(raw,refYear,projStart){
+  if(!raw)return null;
+  const s=raw.trim().replace(/\s+/g,' ');
+  let m;
+  // ISO
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  // MM/DD/YYYY
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return new Date(+m[3],+m[1]-1,+m[2]);
+  // MM/DD
+  m=s.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if(m){const y=inferYear(+m[1]-1,refYear,projStart);return new Date(y,+m[1]-1,+m[2]);}
+  // Month D, YYYY or Month D
+  m=s.match(/^([a-z]+)\.?\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i);
+  if(m){const mo=MONTHS[m[1].toLowerCase()];if(mo!==undefined){const y=m[3]?+m[3]:inferYear(mo,refYear,projStart);return new Date(y,mo,+m[2]);}}
+  // D Month YYYY
+  m=s.match(/^(\d{1,2})\s+([a-z]+)(?:[,\s]+(\d{4}))?$/i);
+  if(m){const mo=MONTHS[m[2].toLowerCase()];if(mo!==undefined){const y=m[3]?+m[3]:inferYear(mo,refYear,projStart);return new Date(y,mo,+m[1]);}}
+  // Week N
+  m=s.match(/^week\s*(\d+)$/i);
+  if(m&&projStart){return addDays(projStart,(+m[1]-1)*7);}
+  return null;
+}
+
+function parseDateRange(raw,refYear,projStart){
+  if(!raw)return{start:null,end:null};
+  const s=raw.trim();
+  // Normalize dash/to separators that aren't inside a month name
+  const norm=s.replace(/\s*[-–—]+\s*/g,' TO ').replace(/\s+to\s+/gi,' TO ');
+  const parts=norm.split(' TO ');
+  if(parts.length>=2){
+    const startStr=parts[0].trim();
+    let endStr=parts[1].trim();
+    const startDate=parseFlexDate(startStr,refYear,projStart);
+    // end is just a day number?
+    if(startDate&&/^\d{1,2}$/.test(endStr)){
+      const e=new Date(startDate.getFullYear(),startDate.getMonth(),+endStr);
+      if(e<startDate)e.setMonth(e.getMonth()+1);
+      return{start:startDate,end:e};
+    }
+    const endDate=parseFlexDate(endStr,refYear,projStart);
+    return{start:startDate,end:endDate||startDate};
+  }
+  const d=parseFlexDate(s,refYear,projStart);
+  return{start:d,end:d};
+}
+
+// ─── PARSER ───────────────────────────────────────────────────────────────────
+function detectParty(s){
+  const t=s.toLowerCase().trim();
+  if(/^(us|our|we|vendor|seller|provider)/.test(t))return'us';
+  if(/^(them|their|customer|client|partner|buyer|prospect)/.test(t))return'them';
+  if(/^(joint|both|shared|mutual|together)/.test(t))return'joint';
+  return null;
+}
+
+function extractPartyOwner(raw){
+  const m=raw.match(/^([^(]+?)(?:\s*\(([^)]*)\))?$/);
+  const partyStr=m?m[1].trim():raw.trim();
+  const owner=m&&m[2]?m[2].trim():'';
+  const party=detectParty(partyStr)||'us';
+  return{party,owner};
+}
+
+let _uid=0;
+const uid=()=>'id'+(++_uid);
+
+const MS_COLORS=['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#0891b2','#be185d','#0f766e'];
+
+function parsePlan(text){
+  const lines=text.split('\n');
+  const errors=[];
+  let planTitle='',planGoal='',ourTeam='',theirTeam='';
+  let projStart=null,projEnd=null,refYear=null;
+  const milestones=[];
+  const tasks=[];
+  let headerDone=false;
+  let currentMs=null;
+  let lastTaskId=null; // for sub-task parenting
+
+  for(let i=0;i<lines.length;i++){
+    const raw=lines[i];
+    const trimmed=raw.trim();
+    if(!trimmed)continue;
+
+    // ── HEADER ──
+    if(!headerDone){
+      const hm=trimmed.match(/^([A-Za-z ]+?)\s*:\s*(.+)$/);
+      if(hm){
+        const key=hm[1].toLowerCase().trim();
+        const val=hm[2].trim();
+        if(/^project|^plan|^title/.test(key)){planTitle=val;continue;}
+        if(/^goal|^objective|^purpose/.test(key)){planGoal=val;continue;}
+        if(/^our|^vendor|^seller|^provider/.test(key)){ourTeam=val;continue;}
+        if(/^their|^customer|^client|^partner/.test(key)){theirTeam=val;continue;}
+        if(/^start/.test(key)){projStart=parseFlexDate(val,null,null);if(projStart)refYear=projStart.getFullYear();continue;}
+        if(/^end|^finish/.test(key)){projEnd=parseFlexDate(val,refYear,projStart);continue;}
+      }
+    }
+
+    // ── PHASE / MILESTONE ──
+    // Patterns:
+    //   Phase: Name | Jun 1 - Jun 21
+    //   Phase: Name (Jun 1 - Jun 21)
+    //   Phase: Name (due Jun 21)
+    //   Phase: Name | due Jun 21
+    //   ## Name | Jun 1 - Jun 21
+    const phasePat=
+      trimmed.match(/^(?:phase|milestone|stage|step)\s*:\s*(.+?)(?:\s*[|(]\s*(?:due\s*)?(.+?)[\)]?\s*)?$/i)||
+      trimmed.match(/^#{1,3}\s+(.+?)(?:\s*\|\s*(.+?))?$/)||
+      trimmed.match(/^([A-Z][A-Za-z &/\-]+?)\s*\((?:due\s*)?([^)]+)\)\s*$/);
+
+    if(phasePat){
+      headerDone=true;
+      const msName=phasePat[1].trim();
+      const dateStr=phasePat[2]?phasePat[2].trim():'';
+
+      let msStart=null,msEnd=null;
+      if(dateStr){
+        // Try range first
+        const dr=parseDateRange(dateStr,refYear,projStart);
+        if(dr.start&&dr.end&&dr.start.getTime()!==dr.end.getTime()){
+          msStart=dr.start;msEnd=dr.end;
+        } else if(dr.start){
+          // Only one date — treat as end/due date; start will be auto-set later
+          msEnd=dr.start;
+        }
+      }
+      currentMs={id:uid(),name:msName,startDate:msStart?iso(msStart):'',endDate:msEnd?iso(msEnd):'',color:MS_COLORS[milestones.length%MS_COLORS.length],_explicitStart:!!msStart};
+      milestones.push(currentMs);
+      lastTaskId=null;
+      continue;
+    }
+
+    // ── TASK / SUB-TASK ──
+    // Sub-task: line starts with 2+ spaces then "- "
+    // Task: line starts with "- " or "* "
+    const isSubtask=/^\s{2,}[-*•]\s/.test(raw);
+    const taskPat=trimmed.match(/^[-*•]\s+(.+)$/);
+    if(taskPat){
+      headerDone=true;
+      const rest=taskPat[1].trim();
+      let taskName='',party='us',owner='',startDate=null,endDate=null;
+
+      // Bracket format: "Name [party | owner | dates]"
+      const bm=rest.match(/^(.+?)\s*\[([^\]]+)\]\s*$/);
+      if(bm){
+        taskName=bm[1].trim();
+        const segs=bm[2].split(/[|,]/).map(s=>s.trim()).filter(Boolean);
+        let dateFound=false;
+        for(const seg of segs){
+          if(!dateFound){const dr=parseDateRange(seg,refYear,projStart);if(dr.start){startDate=dr.start;endDate=dr.end;dateFound=true;continue;}}
+          const p=detectParty(seg);
+          if(p){party=p;continue;}
+          const po=extractPartyOwner(seg);
+          if(po.party){party=po.party;owner=po.owner;}
+          else if(!owner)owner=seg;
+        }
+      } else {
+        // Comma-separated: "Name, us (Owner), Jun 1–7"
+        const segs=[];let buf='',depth=0;
+        for(const ch of rest){if(ch==='(')depth++;else if(ch===')')depth--;else if(ch===','&&depth===0){segs.push(buf.trim());buf='';continue;}buf+=ch;}
+        if(buf.trim())segs.push(buf.trim());
+        if(segs.length>=1)taskName=segs[0];
+        let dateFoundIdx=-1;
+        for(let si=1;si<segs.length;si++){
+          const seg=segs[si];
+          const dr=parseDateRange(seg,refYear,projStart);
+          if(dr.start&&dateFoundIdx<0){startDate=dr.start;endDate=dr.end;dateFoundIdx=si;continue;}
+          const po=extractPartyOwner(seg);
+          if(po.party){party=po.party;owner=po.owner;continue;}
+          if(!owner)owner=seg;
+        }
+      }
+
+      if(!taskName){continue;}
+      if(!startDate&&projStart)startDate=new Date(projStart);
+      if(!endDate&&startDate){endDate=new Date(startDate);endDate.setDate(endDate.getDate()+1);}
+
+      const taskId=uid();
+      tasks.push({id:taskId,name:taskName,party,owner,msId:currentMs?currentMs.id:'',start:iso(startDate),end:iso(endDate),isSubtask,parentId:isSubtask?lastTaskId:null});
+      if(!isSubtask)lastTaskId=taskId;
+      continue;
+    }
+
+    // Non-matched non-blank line after header done: ignore
+    if(!headerDone&&!planTitle){planTitle=trimmed;}
+  }
+
+  // ── AUTO-DATE PHASES ──
+  // Fill in missing start dates: each phase starts where the previous ended
+  let prevEnd=projStart?new Date(projStart):null;
+  milestones.forEach(ms=>{
+    if(!ms.startDate&&prevEnd){ms.startDate=iso(prevEnd);}
+    // If no end, derive from tasks or default to start + 1 week
+    if(!ms.endDate){
+      const mTasks=tasks.filter(t=>t.msId===ms.id&&!t.isSubtask);
+      const ends=mTasks.map(t=>t.end).filter(Boolean).map(s=>fromIso(s));
+      const maxEnd=ends.length?new Date(Math.max(...ends)):null;
+      if(maxEnd)ms.endDate=iso(maxEnd);
+      else if(ms.startDate)ms.endDate=iso(addDays(fromIso(ms.startDate),7));
+    }
+    if(ms.endDate)prevEnd=fromIso(ms.endDate);
+  });
+
+  // Snap projEnd to the last TASK end date only (not phase dates),
+  // so the timeline ends exactly where real work ends.
+  // Fill projStart from earliest task/phase start if not provided.
+  {
+    const taskDates=tasks.flatMap(t=>[t.start,t.end]).filter(Boolean).map(s=>fromIso(s)).filter(Boolean);
+    const allStartDates=[
+      ...tasks.map(t=>t.start),
+      ...milestones.map(m=>m.startDate)
+    ].filter(Boolean).map(s=>fromIso(s)).filter(Boolean);
+    if(!projStart&&allStartDates.length) projStart=new Date(Math.min(...allStartDates));
+    if(taskDates.length) projEnd=new Date(Math.max(...taskDates.map(d=>+d)));
+    else if(!projEnd&&milestones.length){
+      const mEnds=milestones.map(m=>m.endDate).filter(Boolean).map(s=>fromIso(s));
+      if(mEnds.length) projEnd=new Date(Math.max(...mEnds));
+    }
+  }
+
+  return{planTitle:planTitle||'Mutual Action Plan',planGoal,ourTeam:ourTeam||'DocuSign',theirTeam:theirTeam||'Customer',projStart,projEnd,milestones,tasks,errors};
+}
+
+// ─── GANTT RENDERER ───────────────────────────────────────────────────────────
+function renderGanttFromData(data){
+  const{planTitle,planGoal,ourTeam,theirTeam,projStart,projEnd,milestones,tasks}=data;
+  const mainArea=document.getElementById('mainArea');
+
+  if(!projStart||!projEnd||projStart>=projEnd){
+    mainArea.innerHTML=`<div class="empty-state"><h3>Add project dates</h3><p>Include <code>Start:</code> and <code>End:</code> lines, or add tasks with dates.</p></div>`;
+    return;
+  }
+
+  // totalSpan goes from the *start* of projStart to the *end* of projEnd (midnight of next day).
+  // This means a bar whose end = projEnd will have its right edge at exactly 100%.
+  const timelineEnd=addDays(projEnd,1); // exclusive upper bound
+  const totalSpan=timelineEnd-projStart;
+  // Expose to drag handler
+  _ganttProjStart=projStart; _ganttProjEnd=projEnd; _ganttTimelineEnd=timelineEnd; _ganttTotalSpan=totalSpan;
+  function pct(d){
+    if(!d)return 0;
+    const c=new Date(Math.max(+projStart,Math.min(+timelineEnd,+d)));
+    return((c-projStart)/totalSpan)*100;
+  }
+  function barStyle(s,e){
+    const sd=fromIso(s),ed=fromIso(e);if(!sd||!ed)return'display:none;';
+    const left=pct(sd);
+    const right=pct(addDays(ed,1)); // right edge = start of day after end
+    return`left:${left.toFixed(2)}%;width:${Math.max(right-left,.4).toFixed(2)}%;`;
+  }
+
+  // Build column data for monthly OR weekly view.
+  // Each col: { w (Date used as left-anchor), widthPct, label }
+  // All widths are proportional to real days covered → last col ends flush at projEnd.
+  let colData=[];
+  if(viewMode==='month'){
+    let m=new Date(projStart.getFullYear(),projStart.getMonth(),1);
+    while(m<timelineEnd){
+      const nextM=new Date(m.getFullYear(),m.getMonth()+1,1);
+      const colStart=new Date(Math.max(+projStart,+m));
+      const colEnd=new Date(Math.min(+timelineEnd,+nextM));
+      const widthPct=((colEnd-colStart)/totalSpan)*100;
+      const label=m.toLocaleDateString('en-US',{month:'short'})+' \''+String(m.getFullYear()).slice(2);
+      colData.push({w:new Date(colStart),widthPct,label});
+      m=nextM;
+    }
+  } else {
+    // Weekly: align to Monday
+    let wStart=new Date(projStart);
+    while(wStart.getDay()!==1)wStart=addDays(wStart,-1);
+    while(wStart<timelineEnd){
+      const colStart=new Date(Math.max(+projStart,+wStart));
+      const colEnd=new Date(Math.min(+timelineEnd,+addDays(wStart,7)));
+      const widthPct=((colEnd-colStart)/totalSpan)*100;
+      const label=wStart.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      colData.push({w:new Date(colStart),widthPct,label});
+      wStart=addDays(wStart,7);
+    }
+  }
+
+  const today=new Date();today.setHours(0,0,0,0);
+  const showToday=today>=projStart&&today<timelineEnd;
+  const todayPct=pct(today);
+
+  const BAR={us:'#2563eb',them:'#059669',joint:'#d97706'};
+  const PARTY_LABELS={us:ourTeam,them:theirTeam,joint:'Joint'};
+
+  // Dynamic min-width: label col (220px) + at least 110px per month or 68px per week
+  const ganttMinWidth=220+colData.length*(viewMode==='month'?110:68);
+
+  // Absolutely positioned columns — same coordinate system as bars.
+  // colData drives both the header labels and the grid lines in every row.
+  function colsHtml(includeLabels){
+    return colData.map(({w,widthPct,label})=>{
+      const leftPct=pct(w);
+      const displayLabel=label;
+      const txt=includeLabels
+        ?`<span style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:${viewMode==='month'?'11':'10'}px;font-weight:${viewMode==='month'?'600':'500'};color:#6b7280;white-space:nowrap;pointer-events:none;overflow:hidden;max-width:calc(100% - 8px);">${displayLabel}</span>`
+        :'';
+      return`<div style="position:absolute;left:${leftPct.toFixed(3)}%;width:${widthPct.toFixed(3)}%;top:0;bottom:0;border-right:1px solid #e5e7eb;box-sizing:border-box;">${txt}</div>`;
+    }).join('');
+  }
+  function gridLines(){return`<div style="position:absolute;inset:0;pointer-events:none;">${colsHtml(false)}</div>`;}
+  function todayEl(){return showToday?`<div class="today-line" style="left:${todayPct.toFixed(2)}%"></div>`:'';}
+  const colHeaders=`<div style="position:absolute;inset:0;">${colsHtml(true)}</div>`;
+
+  // Group tasks by milestone
+  const grouped={};
+  milestones.forEach(m=>{grouped[m.id]=[];});
+  grouped['__none__']=[];
+  tasks.forEach(t=>{const k=(t.msId&&grouped[t.msId]!==undefined)?t.msId:'__none__';grouped[k].push(t);});
+
+  function taskRow(t){
+    const color=BAR[t.party]||'#6b7280';
+    const subClass=t.isSubtask?' subtask-row':'';
+    const labelClass=t.isSubtask?' subtask':'';
+    const barClass=t.isSubtask?' subtask-bar':'';
+    const ownerTag=`<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${color};margin-right:3px;vertical-align:middle;"></span>${PARTY_LABELS[t.party]||t.party}${t.owner?' · '+t.owner:''}`;
+    const label=t.owner?`${t.name} · ${t.owner}`:t.name;
+    return`<div class="gantt-row${subClass}" data-taskid="${t.id}">
+      <div class="gantt-task-label${labelClass}" onclick="openTaskEdit('${t.id}')" title="Click to edit">
+        <div class="task-name">${esc(t.name)}</div>
+        <div class="task-owner">${ownerTag}</div>
+      </div>
+      <div class="gantt-bar-area">${gridLines()}${todayEl()}
+        <div class="gantt-bar${barClass}" id="bar-${t.id}" style="${barStyle(t.start,t.end)}background:${color};"
+          data-taskid="${t.id}"
+          title="${esc(label)}&#10;${fmtShort(fromIso(t.start))} → ${fmtShort(fromIso(t.end))}"
+          onmousedown="startBarDrag(event,'${t.id}')">${esc(label)}</div>
+      </div>
+    </div>`;
+  }
+
+  let ganttRows='';
+  milestones.forEach((m,i)=>{
+    const mTasks=grouped[m.id]||[];
+    const msEnd=fromIso(m.endDate);
+
+    // Determine effective start for the phase bar:
+    // • Use explicit start if the user wrote one (e.g. "Phase: Kickoff | Jun 1 - Jun 7")
+    // • Otherwise fall back to the earliest task-start within this phase
+    // • If still nothing, show only a diamond marker (no bar)
+    let effectiveStart = m._explicitStart ? fromIso(m.startDate) : null;
+    if(!effectiveStart){
+      const taskStarts=mTasks.filter(t=>!t.isSubtask&&t.start)
+        .map(t=>fromIso(t.start)).filter(Boolean);
+      if(taskStarts.length) effectiveStart=new Date(Math.min(...taskStarts.map(d=>+d)));
+    }
+
+    const showBar=effectiveStart&&msEnd;
+    const phBarStyle=showBar?barStyle(iso(effectiveStart),iso(msEnd)):'';
+    const phEndPct=msEnd?pct(addDays(msEnd,1)):null;
+
+    const phaseBar=msEnd?`
+      ${showBar?`
+        <div class="phase-bar"  style="${phBarStyle}background:${m.color};"></div>
+        <div class="phase-bar-border" style="${phBarStyle}border-color:${m.color};"></div>
+      `:''}
+      <div class="ms-diamond" style="left:${phEndPct.toFixed(2)}%;background:${m.color};"></div>
+    `:'';
+
+    ganttRows+=`<div class="gantt-phase-row">
+      <div class="gantt-phase-label" onclick="openPhaseEdit('${m.id}')" title="Click to edit phase">
+        <div class="ph-name" style="color:${m.color}">${esc(m.name)}</div>
+        <div class="ph-dates">${effectiveStart?fmtShort(effectiveStart):'?'} → ${msEnd?fmtShort(msEnd):'?'}</div>
+        <div class="ph-edit-hint">✎ edit phase</div>
+      </div>
+      <div class="gantt-phase-timeline">${gridLines()}${todayEl()}${phaseBar}</div>
+    </div>
+    ${mTasks.map(taskRow).join('')}`;
+  });
+
+  const ungrouped=grouped['__none__']||[];
+  if(ungrouped.length){
+    ganttRows+=`<div class="gantt-phase-row">
+      <div class="gantt-phase-label"><div class="ph-name" style="color:var(--gray-500)">Other Tasks</div></div>
+      <div class="gantt-phase-timeline">${gridLines()}</div>
+    </div>${ungrouped.map(taskRow).join('')}`;
+  }
+
+  if(!ganttRows.trim()){
+    ganttRows=`<div style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px;">No tasks yet — add task lines starting with <code>-</code> in the sidebar.</div>`;
+  }
+
+  const dur=Math.ceil((projEnd-projStart)/86400000/7);
+  const usTasks=tasks.filter(t=>t.party==='us'&&!t.isSubtask).length;
+  const themTasks=tasks.filter(t=>t.party==='them'&&!t.isSubtask).length;
+  const jointTasks=tasks.filter(t=>t.party==='joint'&&!t.isSubtask).length;
+
+  mainArea.innerHTML=`
+    <div class="plan-header">
+      <h1>${esc(planTitle)}</h1>
+      ${planGoal?`<div class="subtitle">${esc(planGoal)}</div>`:''}
+      <div class="plan-meta">
+        <div class="plan-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          <strong>${fmtDate(projStart)}</strong>&nbsp;→&nbsp;<strong>${fmtDate(projEnd)}</strong>
+        </div>
+        <div class="plan-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${dur} week${dur!==1?'s':''}
+        </div>
+        <div class="plan-meta-item"><strong>${esc(ourTeam)}</strong>&nbsp;↔&nbsp;<strong>${esc(theirTeam)}</strong></div>
+      </div>
+    </div>
+    <div class="summary-row">
+      <div class="summary-card"><div class="val">${tasks.filter(t=>!t.isSubtask).length}</div><div class="lbl">Tasks</div></div>
+      <div class="summary-card"><div class="val">${milestones.length}</div><div class="lbl">Phases</div></div>
+      <div class="summary-card"><div class="val" style="color:#2563eb">${usTasks}</div><div class="lbl">${esc(ourTeam)}</div></div>
+      <div class="summary-card"><div class="val" style="color:#059669">${themTasks}</div><div class="lbl">${esc(theirTeam)}</div></div>
+      ${jointTasks?`<div class="summary-card"><div class="val" style="color:#d97706">${jointTasks}</div><div class="lbl">Joint</div></div>`:''}
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>${esc(ourTeam)}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>${esc(theirTeam)}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Joint</div>
+      ${showToday?`<div class="legend-item"><div style="width:2px;height:13px;background:#ef4444;border-radius:1px;"></div>Today</div>`:''}
+    </div>
+    <div class="gantt-wrap"><div class="gantt-inner" style="min-width:${ganttMinWidth}px;">
+      <div class="gantt-header">
+        <div class="gantt-label-col">Task / Phase</div>
+        <div class="gantt-timeline-col" style="position:relative;height:36px;">${colHeaders}${todayEl()}</div>
+      </div>
+      ${ganttRows}
+    </div></div>`;
+}
+
+// ─── RENDER STATE (accessed by drag handler) ──────────────────────────────────
+let _ganttProjStart=null; // Date
+let _ganttProjEnd=null;   // Date (inclusive last day)
+let _ganttTimelineEnd=null; // Date (projEnd + 1 day, exclusive)
+let _ganttTotalSpan=0;    // ms
+
+// ─── VIEW MODE ────────────────────────────────────────────────────────────────
+let viewMode='month';
+function setView(mode){
+  viewMode=mode;
+  document.getElementById('btn-month').classList.toggle('active',mode==='month');
+  document.getElementById('btn-week').classList.toggle('active',mode==='week');
+  if(lastParsed)renderGanttFromData(lastParsed);
+}
+
+// ─── BUILD PLAN ───────────────────────────────────────────────────────────────
+let lastParsed=null;
+function buildPlan(){
+  const text=document.getElementById('planText').value;
+  const errEl=document.getElementById('parseErrors');
+  const prevEl=document.getElementById('parsePreview');
+  const prevTxt=document.getElementById('parsePreviewText');
+  errEl.className='parse-errors';prevEl.className='parse-preview';
+  if(!text.trim()){errEl.textContent='Please enter a plan first.';errEl.className='parse-errors show';return;}
+  const data=parsePlan(text);
+  lastParsed=data;
+  // Update phase dropdown in quick-add task form
+  updatePhaseDropdown(data.milestones);
+  if(data.errors.length){errEl.innerHTML=`<strong>Parsing notes:</strong><ul>${data.errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;errEl.className='parse-errors show';}
+  if(data.tasks.length||data.milestones.length){
+    prevTxt.textContent=`Parsed ${data.milestones.length} phase${data.milestones.length!==1?'s':''} and ${data.tasks.length} task${data.tasks.length!==1?'s':''}.`;
+    prevEl.className='parse-preview show';
+    renderGanttFromData(data);
+  } else {
+    errEl.innerHTML=(errEl.innerHTML?errEl.innerHTML+'<br>':'')+'No phases or tasks found. Check the format guide.';
+    errEl.className='parse-errors show';
+  }
+}
+
+function updatePhaseDropdown(milestones){
+  const sel=document.getElementById('qa-task-phase');
+  sel.innerHTML='<option value="__end__">End of plan</option>'+milestones.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+}
+
+// ─── QUICK ADD ────────────────────────────────────────────────────────────────
+function toggleQadd(key){
+  const body=document.getElementById('qadd-'+key);
+  const chev=document.getElementById('chevron-'+key);
+  const open=body.classList.contains('open');
+  body.classList.toggle('open',!open);
+  chev.classList.toggle('open',!open);
+}
+
+let selectedParty='us';
+function setParty(p){
+  selectedParty=p;
+  ['us','them','joint'].forEach(k=>{
+    const btn=document.getElementById('pb-'+k);
+    btn.className='party-btn'+(k===p?' active-'+k:'');
+  });
+}
+
+function insertPhase(){
+  const name=document.getElementById('qa-phase-name').value.trim();
+  const start=document.getElementById('qa-phase-start').value;
+  const end=document.getElementById('qa-phase-end').value;
+  if(!name){alert('Enter a phase name.');return;}
+  const fmtInput=d=>{if(!d)return'';const dt=fromIso(d);return dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});};
+  let line=`\nPhase: ${name}`;
+  if(start&&end)line+=` | ${fmtInput(start)} - ${fmtInput(end)}`;
+  else if(end)line+=` | due ${fmtInput(end)}`;
+  const ta=document.getElementById('planText');
+  ta.value=(ta.value.trimEnd())+line+'\n';
+  document.getElementById('qa-phase-name').value='';
+  document.getElementById('qa-phase-start').value='';
+  document.getElementById('qa-phase-end').value='';
+  buildPlan();
+}
+
+function insertTask(){
+  const name=document.getElementById('qa-task-name').value.trim();
+  const owner=document.getElementById('qa-task-owner').value.trim();
+  const start=document.getElementById('qa-task-start').value;
+  const end=document.getElementById('qa-task-end').value;
+  const phaseId=document.getElementById('qa-task-phase').value;
+  const isSub=document.getElementById('qa-subtask').checked;
+  if(!name){alert('Enter a task name.');return;}
+  const fmtInput=d=>{if(!d)return'';const dt=fromIso(d);return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});};
+  const partyStr=selectedParty+(owner?` (${owner})`:'');
+  const dateStr=(start&&end)?`${fmtInput(start)} - ${fmtInput(end)}`:(start?fmtInput(start):'');
+  const indent=isSub?'  ':'';
+  const parts=[name,partyStr,dateStr].filter(Boolean);
+  const line=`${indent}- ${parts.join(', ')}`;
+
+  const ta=document.getElementById('planText');
+  const text=ta.value;
+
+  if(phaseId==='__end__'){
+    ta.value=text.trimEnd()+'\n'+line+'\n';
+  } else {
+    // Find the phase in text and append after its last task
+    const phaseMs=lastParsed&&lastParsed.milestones.find(m=>m.id===phaseId);
+    if(phaseMs){
+      // Find the phase header line and the last task line belonging to it
+      // Simple approach: find the phase name in the text and insert after the last
+      // line of the section (before the next Phase: or end)
+      const phLines=text.split('\n');
+      // Find line index of this phase
+      let phIdx=-1;
+      for(let i=0;i<phLines.length;i++){
+        const l=phLines[i].trim();
+        if(l.toLowerCase().startsWith('phase:')&&l.includes(phaseMs.name)){phIdx=i;break;}
+        if(l.startsWith('##')&&l.includes(phaseMs.name)){phIdx=i;break;}
+      }
+      if(phIdx>=0){
+        // Find the end of this phase section
+        let insertIdx=phIdx+1;
+        for(let i=phIdx+1;i<phLines.length;i++){
+          const l=phLines[i].trim();
+          if(l.match(/^(phase|milestone|stage|step)\s*:/i)||l.match(/^#{1,3}\s/)){break;}
+          insertIdx=i+1;
+        }
+        phLines.splice(insertIdx,0,line);
+        ta.value=phLines.join('\n');
+      } else {
+        ta.value=text.trimEnd()+'\n'+line+'\n';
+      }
+    } else {
+      ta.value=text.trimEnd()+'\n'+line+'\n';
+    }
+  }
+
+  // Reset form
+  document.getElementById('qa-task-name').value='';
+  document.getElementById('qa-task-owner').value='';
+  document.getElementById('qa-task-start').value='';
+  document.getElementById('qa-task-end').value='';
+  document.getElementById('qa-subtask').checked=false;
+  buildPlan();
+}
+
+// ─── TASK EDIT MODAL ─────────────────────────────────────────────────────────
+let _editingTaskId=null;
+let _editParty='us';
+
+function openTaskEdit(taskId){
+  if(!lastParsed)return;
+  const t=lastParsed.tasks.find(x=>x.id===taskId);
+  if(!t)return;
+  _editingTaskId=taskId;
+
+  // Badge label
+  const PARTY_BADGE={us:{label:lastParsed.ourTeam||'DocuSign',bg:'#dbeafe',fg:'#1e40af'},them:{label:lastParsed.theirTeam||'Customer',bg:'#dcfce7',fg:'#166534'},joint:{label:'Joint',bg:'#fef3c7',fg:'#92400e'}};
+  const badgeInfo=PARTY_BADGE[t.party]||PARTY_BADGE.us;
+  const badge=document.getElementById('editBadge');
+  badge.textContent=badgeInfo.label;badge.style.background=badgeInfo.bg;badge.style.color=badgeInfo.fg;
+
+  // Party buttons — update labels from plan data
+  document.getElementById('edit-pb-us').textContent=lastParsed.ourTeam||'DocuSign';
+  document.getElementById('edit-pb-them').textContent=lastParsed.theirTeam||'Customer';
+
+  document.getElementById('edit-task-name').value=t.name||'';
+  document.getElementById('edit-task-owner').value=t.owner||'';
+  document.getElementById('edit-task-start').value=t.start||'';
+  document.getElementById('edit-task-end').value=t.end||'';
+
+  const phSel=document.getElementById('edit-task-phase');
+  phSel.innerHTML='<option value="">— No phase —</option>'+lastParsed.milestones.map(m=>`<option value="${esc(m.id)}"${m.id===t.msId?' selected':''}>${esc(m.name)}</option>`).join('');
+
+  setEditParty(t.party||'us');
+  document.getElementById('taskEditOverlay').classList.add('open');
+}
+
+function setEditParty(p){
+  _editParty=p;
+  const colors={us:'active-us',them:'active-them',joint:'active-joint'};
+  ['us','them','joint'].forEach(k=>{
+    const btn=document.getElementById('edit-pb-'+k);
+    if(!btn)return;
+    btn.className='party-btn'+(k===p?' '+colors[k]:'');
+  });
+  // Update badge colour live
+  if(!lastParsed)return;
+  const PARTY_BADGE={us:{label:lastParsed.ourTeam||'DocuSign',bg:'#dbeafe',fg:'#1e40af'},them:{label:lastParsed.theirTeam||'Customer',bg:'#dcfce7',fg:'#166534'},joint:{label:'Joint',bg:'#fef3c7',fg:'#92400e'}};
+  const b=document.getElementById('editBadge');
+  const info=PARTY_BADGE[p]||PARTY_BADGE.us;
+  b.textContent=info.label;b.style.background=info.bg;b.style.color=info.fg;
+}
+
+function saveTaskEdit(){
+  if(!lastParsed||!_editingTaskId)return;
+  const t=lastParsed.tasks.find(x=>x.id===_editingTaskId);
+  if(!t)return;
+  const newName=document.getElementById('edit-task-name').value.trim();
+  if(newName)t.name=newName;
+  t.owner=document.getElementById('edit-task-owner').value.trim();
+  t.party=_editParty;
+  t.start=document.getElementById('edit-task-start').value||t.start;
+  t.end=document.getElementById('edit-task-end').value||t.end;
+  const phVal=document.getElementById('edit-task-phase').value;
+  t.msId=phVal||'';
+  closeTaskEdit();
+  renderGanttFromData(lastParsed);
+}
+
+function deleteEditTask(){
+  if(!lastParsed||!_editingTaskId)return;
+  if(!confirm('Delete this task?'))return;
+  lastParsed.tasks=lastParsed.tasks.filter(t=>t.id!==_editingTaskId);
+  closeTaskEdit();
+  renderGanttFromData(lastParsed);
+}
+
+function closeTaskEdit(){
+  document.getElementById('taskEditOverlay').classList.remove('open');
+  _editingTaskId=null;
+}
+
+// Close on overlay click (outside modal)
+document.getElementById('taskEditOverlay').addEventListener('click',function(e){
+  if(e.target===this)closeTaskEdit();
+});
+
+// ─── BAR DRAG ─────────────────────────────────────────────────────────────────
+let _drag=null;
+
+function startBarDrag(e,taskId){
+  if(!lastParsed)return;
+  const t=lastParsed.tasks.find(x=>x.id===taskId);
+  if(!t)return;
+  e.preventDefault();
+  const bar=e.currentTarget;
+  const barArea=bar.closest('.gantt-bar-area');
+  if(!barArea)return;
+  const areaRect=barArea.getBoundingClientRect();
+  const taskStartMs=t.start?+fromIso(t.start):0;
+  const taskEndMs=t.end?+fromIso(t.end):taskStartMs;
+  _drag={taskId,bar,barArea,areaRect,startX:e.clientX,taskStartMs,duration:taskEndMs-taskStartMs,moved:false};
+  document.addEventListener('mousemove',barDragMove,{passive:true});
+  document.addEventListener('mouseup',barDragEnd);
+}
+
+function barDragMove(e){
+  if(!_drag||!_ganttTotalSpan)return;
+  const dx=e.clientX-_drag.startX;
+  if(Math.abs(dx)<4&&!_drag.moved)return;
+  _drag.moved=true;
+  _drag.bar.classList.add('is-dragging');
+  const msDelta=Math.round((dx/_drag.areaRect.width)*_ganttTotalSpan/86400000)*86400000;
+  const newStartMs=_drag.taskStartMs+msDelta;
+  const newLeftPct=((newStartMs-+_ganttProjStart)/_ganttTotalSpan)*100;
+  _drag.bar.style.left=Math.max(0,newLeftPct).toFixed(2)+'%';
+  _drag.bar.title=`${fmtShort(new Date(newStartMs))} → ${fmtShort(new Date(newStartMs+_drag.duration))}\n(release to apply)`;
+}
+
+function barDragEnd(e){
+  if(!_drag)return;
+  document.removeEventListener('mousemove',barDragMove);
+  document.removeEventListener('mouseup',barDragEnd);
+  _drag.bar.classList.remove('is-dragging');
+
+  if(!_drag.moved){
+    // Treat as click → open edit
+    const id=_drag.taskId;
+    _drag=null;
+    openTaskEdit(id);
+    return;
+  }
+
+  const dx=e.clientX-_drag.startX;
+  const msDelta=Math.round((dx/_drag.areaRect.width)*_ganttTotalSpan/86400000)*86400000;
+  const newStart=new Date(_drag.taskStartMs+msDelta);
+  const newEnd=new Date(_drag.taskStartMs+msDelta+_drag.duration);
+  if(lastParsed){
+    const t=lastParsed.tasks.find(x=>x.id===_drag.taskId);
+    if(t){t.start=iso(newStart);t.end=iso(newEnd);}
+  }
+  _drag=null;
+  renderGanttFromData(lastParsed);
+}
+
+// ─── PHASE EDIT MODAL ────────────────────────────────────────────────────────
+let _editingPhaseId=null;
+let _editPhaseColor='#7c3aed';
+
+const PHASE_COLORS=['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#0891b2','#be185d','#0f766e','#ea580c','#4f46e5'];
+
+function openPhaseEdit(phaseId){
+  if(!lastParsed)return;
+  const m=lastParsed.milestones.find(x=>x.id===phaseId);
+  if(!m)return;
+  _editingPhaseId=phaseId;
+  _editPhaseColor=m.color||'#7c3aed';
+
+  document.getElementById('edit-phase-name').value=m.name||'';
+  document.getElementById('edit-phase-owner').value=m.owner||'';
+  document.getElementById('edit-phase-start').value=m.startDate||'';
+  document.getElementById('edit-phase-end').value=m.endDate||'';
+
+  // Party select — update labels and set value
+  const sel=document.getElementById('edit-phase-party');
+  sel.options[0].text=lastParsed.ourTeam||'DocuSign';
+  sel.options[1].text=lastParsed.theirTeam||'Customer';
+  sel.value=m.party||'us';
+
+  // Color swatches
+  const sc=document.getElementById('phaseColorSwatches');
+  sc.innerHTML=PHASE_COLORS.map(c=>`<div class="color-swatch${c===_editPhaseColor?' selected':''}" style="background:${c};" onclick="selectPhaseColor('${c}')" title="${c}"></div>`).join('');
+
+  document.getElementById('phaseEditOverlay').classList.add('open');
+}
+
+function selectPhaseColor(c){
+  _editPhaseColor=c;
+  document.querySelectorAll('#phaseColorSwatches .color-swatch').forEach(el=>{
+    el.classList.toggle('selected',el.style.background===c||el.style.backgroundColor===c);
+  });
+}
+
+function savePhaseEdit(){
+  if(!lastParsed||!_editingPhaseId)return;
+  const m=lastParsed.milestones.find(x=>x.id===_editingPhaseId);
+  if(!m)return;
+  const newName=document.getElementById('edit-phase-name').value.trim();
+  if(newName)m.name=newName;
+  m.owner=document.getElementById('edit-phase-owner').value.trim();
+  m.party=document.getElementById('edit-phase-party').value;
+  m.color=_editPhaseColor;
+  const newStart=document.getElementById('edit-phase-start').value;
+  const newEnd=document.getElementById('edit-phase-end').value;
+  if(newStart){m.startDate=newStart;m._explicitStart=true;}
+  if(newEnd)m.endDate=newEnd;
+  closePhaseEdit();
+  renderGanttFromData(lastParsed);
+}
+
+function deletePhase(){
+  if(!lastParsed||!_editingPhaseId)return;
+  if(!confirm('Delete this phase? Its tasks will move to "Other Tasks".'))return;
+  // Unlink tasks from this phase
+  lastParsed.tasks.forEach(t=>{if(t.msId===_editingPhaseId)t.msId='';});
+  lastParsed.milestones=lastParsed.milestones.filter(m=>m.id!==_editingPhaseId);
+  closePhaseEdit();
+  renderGanttFromData(lastParsed);
+}
+
+function closePhaseEdit(){
+  document.getElementById('phaseEditOverlay').classList.remove('open');
+  _editingPhaseId=null;
+}
+
+document.getElementById('phaseEditOverlay').addEventListener('click',function(e){
+  if(e.target===this)closePhaseEdit();
+});
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toggleGuide(){document.getElementById('guidePanel').classList.toggle('open');}
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')buildPlan();});
+
+// ─── EXAMPLE ─────────────────────────────────────────────────────────────────
+function loadExample(){
+  const today=new Date();
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const d=n=>fmt(addDays(today,n));
+  document.getElementById('planText').value=
+`Project: Acme Corp Platform Onboarding
+Goal: Get Acme live on the platform and fully trained within 8 weeks
+Our Team: DocuSign
+Their Team: Acme Corp
+Start: ${d(0)}
+End: ${d(56)}
+
+Phase: Kickoff | ${d(0)} - ${d(7)}
+- Kickoff meeting, joint (Both teams), ${d(0)} - ${d(1)}
+- Share technical requirements, us (Solutions Eng.), ${d(1)} - ${d(5)}
+  - Draft requirements doc, us (Solutions Eng.), ${d(1)} - ${d(3)}
+  - Review & finalize, joint (Both), ${d(3)} - ${d(5)}
+- Provide IT contacts and credentials, them (IT Team), ${d(2)} - ${d(7)}
+- Align on success metrics, joint (Leadership), ${d(3)} - ${d(5)}
+
+Phase: Integration | ${d(7)} - ${d(21)}
+- Configure API integration, us (Dev Team), ${d(7)} - ${d(18)}
+  - Environment setup, us (Dev), ${d(7)} - ${d(10)}
+  - API mapping & build, us (Dev), ${d(10)} - ${d(16)}
+  - Internal review, us (Dev), ${d(16)} - ${d(18)}
+- Data migration preparation, them (Data Team), ${d(7)} - ${d(18)}
+- Integration testing & bug fixes, joint (QA), ${d(18)} - ${d(21)}
+
+Phase: Training & UAT | ${d(21)} - ${d(42)}
+- End-user training sessions, us (Customer Success), ${d(21)} - ${d(35)}
+  - Admin training, us (CS), ${d(21)} - ${d(25)}
+  - End-user training, us (CS), ${d(25)} - ${d(35)}
+- UAT execution, them (Business Users), ${d(28)} - ${d(42)}
+- Feedback review and sign-off, joint (Project Leads), ${d(38)} - ${d(42)}
+
+Phase: Go Live | ${d(42)} - ${d(56)}
+- Production deployment, us (Dev Team), ${d(42)} - ${d(48)}
+- Go-live announcement, them (Marketing), ${d(48)} - ${d(50)}
+- Hypercare support, us (Support), ${d(49)} - ${d(56)}
+- Final sign-off, joint (Both teams), ${d(55)} - ${d(56)}`;
+  buildPlan();
+}
+</script>
+</body>
+</html>
