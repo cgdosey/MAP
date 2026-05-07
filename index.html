@@ -1399,168 +1399,86 @@ Phase: Go Live | ${d(42)} - ${d(56)}
   buildPlan();
 }
 
-// ─── EXPORT TO PPTX (Google Slides) ──────────────────────────────────────────
+// ─── EXPORT TO PPTX (single slide — insert into any presentation) ─────────────
 async function exportToPptx(){
-  if(!lastParsed){alert('Build a plan first before exporting.');return;}
+  if(!lastParsed){alert('Build a plan first.');return;}
   const btn=document.getElementById('btn-export');
-  const origHtml=btn.innerHTML;
-  btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-6.2-8.55"/></svg> Exporting…';
+  const orig=btn.innerHTML;
+  btn.textContent='Exporting…';
   btn.disabled=true;
 
-  // Lazy-load libraries if not yet present
-  await Promise.all([
-    typeof PptxGenJS==='undefined'?loadScript('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundled.js'):Promise.resolve(),
-    typeof html2canvas==='undefined'?loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'):Promise.resolve()
-  ]);
-
   try{
-    const{planTitle,planGoal,ourTeam,theirTeam,projStart,projEnd,milestones,tasks}=lastParsed;
-    const pptx=new PptxGenJS();
+    // Load sequentially — html2canvas first, then PptxGenJS
+    if(typeof html2canvas==='undefined')
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(typeof PptxGenJS==='undefined'&&typeof pptxgen==='undefined')
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundled.js');
+
+    const mainEl=document.getElementById('mainArea');
+
+    // Unlock every overflow:auto/hidden inside mainArea so the full Gantt renders
+    const saved=[];
+    [mainEl,...mainEl.querySelectorAll('*')].forEach(el=>{
+      const s=getComputedStyle(el);
+      if(/auto|hidden/.test(s.overflow)||/auto|hidden/.test(s.overflowX)){
+        saved.push({el,ov:el.style.overflow,ox:el.style.overflowX});
+        el.style.overflow='visible';
+        el.style.overflowX='visible';
+      }
+    });
+
+    // Two rAF ticks so layout recalculates at the new widths
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+    const fullW=mainEl.scrollWidth, fullH=mainEl.scrollHeight;
+
+    const canvas=await html2canvas(mainEl,{
+      scale:1.8,
+      backgroundColor:'#ffffff',
+      useCORS:true,
+      logging:false,
+      width:fullW,
+      height:fullH,
+      x:0,y:0,
+      scrollX:0,scrollY:0,
+      windowWidth:fullW+460,   // +460 accounts for sidebar so media queries don't shift
+      windowHeight:fullH,
+    });
+
+    // Restore overflow
+    saved.forEach(({el,ov,ox})=>{el.style.overflow=ov;el.style.overflowX=ox;});
+
+    // Create a single 16:9 slide
+    const Ctor=window.PptxGenJS||window.pptxgen;
+    if(!Ctor)throw new Error('PptxGenJS library did not load — check network connection.');
+    const pptx=new Ctor();
     pptx.layout='LAYOUT_WIDE'; // 13.33" × 7.5"
-    pptx.title=planTitle;
 
-    const hx=c=>(c||'#374151').replace('#',''); // strip # for pptxgenjs
-    const dur=Math.ceil((projEnd-projStart)/86400000/7);
-    const partyLabel=p=>p==='us'?ourTeam:p==='them'?theirTeam:'Joint';
+    const slide=pptx.addSlide();
+    slide.background={color:'FFFFFF'};
 
-    // ── Shared helpers ──────────────────────────────────────────────────────
-    function addAccentBar(slide){
-      slide.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.07,fill:{color:hx(partyColors.us)},line:{type:'none'}});
-    }
-    function addSlideTitle(slide,text){
-      slide.addText(text,{x:0.4,y:0.15,w:12.5,h:0.55,fontSize:21,bold:true,color:'111827',fontFace:'Calibri'});
-    }
-
-    // ── SLIDE 1: COVER ──────────────────────────────────────────────────────
-    const s1=pptx.addSlide();
-    s1.background={color:'FFFFFF'};
-    addAccentBar(s1);
-
-    // Coloured left stripe
-    s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.25,h:7.5,fill:{color:hx(partyColors.us)},line:{type:'none'}});
-
-    s1.addText(planTitle,{x:0.65,y:1.1,w:11.8,h:1.6,fontSize:36,bold:true,color:'111827',fontFace:'Calibri',wrap:true});
-    if(planGoal){
-      s1.addText(planGoal,{x:0.65,y:2.85,w:11.8,h:0.8,fontSize:17,color:'6b7280',fontFace:'Calibri',wrap:true});
-    }
-
-    s1.addShape(pptx.ShapeType.line,{x:0.65,y:3.85,w:11.8,h:0,line:{color:'E5E7EB',width:1}});
-
-    s1.addText(` ${fmtDate(projStart)}  →  ${fmtDate(projEnd)}`,{x:0.65,y:4.1,w:7,h:0.4,fontSize:14,color:'374151',fontFace:'Calibri'});
-    s1.addText(`${dur} week${dur!==1?'s':''}`,{x:7.8,y:4.1,w:2.5,h:0.4,fontSize:14,color:'374151',fontFace:'Calibri'});
-    s1.addText(`${ourTeam}  ↔  ${theirTeam}`,{x:0.65,y:4.65,w:9,h:0.45,fontSize:15,bold:true,color:'111827',fontFace:'Calibri'});
-
-    // Legend swatches
-    let lx=0.65;
-    [['us',ourTeam],['them',theirTeam],['joint','Joint']].forEach(([k,lbl])=>{
-      s1.addShape(pptx.ShapeType.rect,{x:lx,y:5.55,w:0.17,h:0.17,fill:{color:hx(partyColors[k])},line:{type:'none'}});
-      s1.addText(lbl,{x:lx+0.24,y:5.52,w:1.7,h:0.24,fontSize:11,color:'374151',fontFace:'Calibri'});
-      lx+=2.1;
+    // Scale image to fill the slide (letterbox if needed)
+    const SW=13.33,SH=7.5;
+    const ratio=canvas.height/canvas.width;
+    let w=SW,h=w*ratio;
+    if(h>SH){h=SH;w=h/ratio;}
+    slide.addImage({
+      data:canvas.toDataURL('image/png'),
+      x:+((SW-w)/2).toFixed(4),
+      y:+((SH-h)/2).toFixed(4),
+      w:+w.toFixed(4),
+      h:+h.toFixed(4),
     });
 
-    // Stats row
-    const statsData=[
-      {n:tasks.filter(t=>!t.isSubtask).length,l:'Tasks',c:'374151'},
-      {n:milestones.length,l:'Phases',c:'374151'},
-      {n:tasks.filter(t=>t.party==='us'&&!t.isSubtask).length,l:ourTeam,c:hx(partyColors.us)},
-      {n:tasks.filter(t=>t.party==='them'&&!t.isSubtask).length,l:theirTeam,c:hx(partyColors.them)},
-      {n:tasks.filter(t=>t.party==='joint'&&!t.isSubtask).length,l:'Joint',c:hx(partyColors.joint)},
-    ].filter(s=>s.n>0);
-    statsData.forEach((s,i)=>{
-      const sx=0.65+i*2.2;
-      s1.addText(String(s.n),{x:sx,y:6.2,w:1.8,h:0.55,fontSize:28,bold:true,color:s.c,fontFace:'Calibri',align:'center'});
-      s1.addText(s.l,{x:sx,y:6.75,w:1.8,h:0.3,fontSize:10,color:'9CA3AF',fontFace:'Calibri',align:'center'});
-    });
-
-    // ── SLIDE 2: GANTT (screenshot) ──────────────────────────────────────────
-    const s2=pptx.addSlide();
-    s2.background={color:'FFFFFF'};
-    addAccentBar(s2);
-    addSlideTitle(s2,'Timeline');
-
-    const ganttInner=document.querySelector('.gantt-inner');
-    if(ganttInner){
-      const wrap=document.querySelector('.gantt-wrap');
-      const prevOverflow=wrap.style.overflow;
-      wrap.style.overflow='visible';
-      const canvas=await html2canvas(ganttInner,{
-        scale:1.8,backgroundColor:'#ffffff',
-        useCORS:true,logging:false,
-        width:ganttInner.scrollWidth,
-        height:ganttInner.scrollHeight
-      });
-      wrap.style.overflow=prevOverflow;
-      const availW=12.53,availH=6.4;
-      const ratio=canvas.height/canvas.width;
-      let iw=availW,ih=iw*ratio;
-      if(ih>availH){ih=availH;iw=ih/ratio;}
-      s2.addImage({data:canvas.toDataURL('image/png'),x:(13.33-iw)/2,y:0.85,w:iw,h:ih});
-    }
-
-    // ── SLIDE 3: PHASES TABLE ────────────────────────────────────────────────
-    if(milestones.length>0){
-      const s3=pptx.addSlide();
-      s3.background={color:'FFFFFF'};
-      addAccentBar(s3);
-      addSlideTitle(s3,'Phases');
-      const hdr={bold:true,color:'FFFFFF',fill:{color:'374151'},fontFace:'Calibri',fontSize:11,border:{type:'solid',color:'374151',pt:0}};
-      const rows=[[
-        {text:'Phase',options:{...hdr}},{text:'Party',options:{...hdr}},{text:'Owner',options:{...hdr}},
-        {text:'Start',options:{...hdr}},{text:'End',options:{...hdr}},{text:'Tasks',options:{...hdr,align:'center'}},
-      ],
-      ...milestones.map(m=>{
-        const c=hx(partyColors[m.party]||'#7c3aed');
-        const pt=tasks.filter(t=>t.msId===m.id&&!t.isSubtask).length;
-        return[
-          {text:m.name,options:{bold:true,color:c,fontFace:'Calibri',fontSize:11}},
-          {text:partyLabel(m.party),options:{fontFace:'Calibri',fontSize:11}},
-          {text:m.owner||'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:m.startDate?fmtShort(fromIso(m.startDate)):'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:m.endDate?fmtShort(fromIso(m.endDate)):'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:String(pt),options:{fontFace:'Calibri',fontSize:11,align:'center'}},
-        ];
-      })];
-      s3.addTable(rows,{x:0.4,y:0.88,w:12.53,rowH:0.42,colW:[3.6,1.8,2.5,1.7,1.7,1.23],
-        border:{type:'solid',color:'E5E7EB',pt:0.5},autoPage:true});
-    }
-
-    // ── SLIDE 4: TASKS TABLE ─────────────────────────────────────────────────
-    const mainTasks=tasks.filter(t=>!t.isSubtask);
-    if(mainTasks.length>0){
-      const s4=pptx.addSlide();
-      s4.background={color:'FFFFFF'};
-      addAccentBar(s4);
-      addSlideTitle(s4,'Tasks');
-      const hdr2={bold:true,color:'FFFFFF',fill:{color:'374151'},fontFace:'Calibri',fontSize:11};
-      const trows=[[
-        {text:'Task',options:{...hdr2}},{text:'Phase',options:{...hdr2}},{text:'Party',options:{...hdr2}},
-        {text:'Owner',options:{...hdr2}},{text:'Start',options:{...hdr2}},{text:'End',options:{...hdr2}},
-      ],
-      ...mainTasks.map(t=>{
-        const c=hx(partyColors[t.party]||'#6b7280');
-        const ph=milestones.find(m=>m.id===t.msId);
-        return[
-          {text:t.name,options:{color:c,fontFace:'Calibri',fontSize:11}},
-          {text:ph?ph.name:'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:partyLabel(t.party),options:{fontFace:'Calibri',fontSize:11}},
-          {text:t.owner||'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:t.start?fmtShort(fromIso(t.start)):'—',options:{fontFace:'Calibri',fontSize:11}},
-          {text:t.end?fmtShort(fromIso(t.end)):'—',options:{fontFace:'Calibri',fontSize:11}},
-        ];
-      })];
-      s4.addTable(trows,{x:0.4,y:0.88,w:12.53,rowH:0.38,colW:[3.4,2.1,1.8,2.0,1.6,1.63],
-        border:{type:'solid',color:'E5E7EB',pt:0.5},autoPage:true});
-    }
-
-    // ── DOWNLOAD ────────────────────────────────────────────────────────────
-    const fname=(planTitle||'mutual-action-plan').replace(/[^\w\s-]/g,'').trim()||'mutual-action-plan';
+    const fname=(lastParsed.planTitle||'mutual-action-plan')
+      .replace(/[^\w\s\-]/g,'').trim()||'mutual-action-plan';
     await pptx.writeFile({fileName:fname+'.pptx'});
 
   }catch(err){
     console.error('Export error:',err);
-    alert('Export failed — check console for details.\n\n'+err.message);
+    alert('Export failed:\n\n'+err.message);
   }finally{
-    btn.innerHTML=origHtml;
+    btn.innerHTML=orig;
     btn.disabled=false;
   }
 }
@@ -1568,10 +1486,12 @@ async function exportToPptx(){
 function loadScript(src){
   return new Promise((resolve,reject)=>{
     const s=document.createElement('script');
-    s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Failed to load: '+src));
+    s.src=src;s.onload=resolve;
+    s.onerror=()=>reject(new Error('Could not load '+src));
     document.head.appendChild(s);
   });
 }
+
 </script>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 </body>
