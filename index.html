@@ -1410,9 +1410,9 @@ async function exportToPptx(){
   try{
     // Load sequentially — html2canvas first, then PptxGenJS
     if(typeof html2canvas==='undefined')
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
     if(typeof PptxGenJS==='undefined'&&typeof pptxgen==='undefined')
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundled.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundled.js');
 
     const mainEl=document.getElementById('mainArea');
 
