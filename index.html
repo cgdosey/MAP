@@ -180,6 +180,14 @@
   .modal-footer-right{display:flex;gap:8px;}
   .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;} .btn-danger:hover{background:#fecaca;}
 
+  /* BRAND COLORS PANEL */
+  .brand-color-row{display:flex;gap:8px;margin-top:8px;}
+  .brand-color-item{flex:1;display:flex;flex-direction:column;gap:4px;align-items:center;}
+  .brand-color-item label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-500);text-align:center;white-space:nowrap;}
+  .brand-color-item input[type=color]{width:100%;height:32px;border:1px solid var(--gray-300);border-radius:6px;padding:2px 3px;cursor:pointer;background:#fff;}
+  .brand-color-item input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  .brand-color-item input[type=color]::-webkit-color-swatch{border:none;border-radius:4px;}
+
   /* PHASE EDIT */
   .gantt-phase-label{cursor:pointer;transition:background .12s;}
   .gantt-phase-label:hover{background:rgba(0,0,0,.03);}
@@ -215,6 +223,10 @@
       <button class="view-btn active" id="btn-month" onclick="setView('month')">Monthly</button>
       <button class="view-btn" id="btn-week" onclick="setView('week')">Weekly</button>
     </div>
+    <button class="btn btn-outline btn-sm" id="btn-export" onclick="exportToPptx()" title="Download as .pptx — then upload to Google Drive to open as Google Slides">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Export to Slides
+    </button>
     <button class="btn btn-outline btn-sm" onclick="window.print()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print
@@ -351,6 +363,34 @@
     </div>
   </div>
 
+  <!-- BRAND COLORS -->
+  <div class="qadd-section">
+    <div class="qadd-header" onclick="toggleQadd('colors')">
+      <div class="qadd-header-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M2 12h20"/></svg>
+        <span style="color:var(--gray-700)">Brand Colors</span>
+      </div>
+      <svg class="qadd-header-chevron" id="chevron-colors" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="qadd-body" id="qadd-colors">
+      <div style="font-size:11.5px;color:var(--gray-500);margin-bottom:8px;line-height:1.5;">Changes apply instantly to all phases and tasks.</div>
+      <div class="brand-color-row">
+        <div class="brand-color-item">
+          <label id="color-label-us">DocuSign</label>
+          <input type="color" id="color-us" value="#2563eb" oninput="setPartyColor('us',this.value)" />
+        </div>
+        <div class="brand-color-item">
+          <label id="color-label-them">Customer</label>
+          <input type="color" id="color-them" value="#059669" oninput="setPartyColor('them',this.value)" />
+        </div>
+        <div class="brand-color-item">
+          <label>Joint</label>
+          <input type="color" id="color-joint" value="#d97706" oninput="setPartyColor('joint',this.value)" />
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- BUILD / EXAMPLE -->
   <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
     <button class="btn btn-primary btn-full" onclick="buildPlan()">
@@ -463,12 +503,6 @@
         <input type="date" id="edit-phase-end" />
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Color</label>
-        <div class="color-swatches" id="phaseColorSwatches"></div>
-      </div>
-    </div>
     <div class="modal-footer">
       <button class="btn btn-sm btn-danger" onclick="deletePhase()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -496,6 +530,18 @@
 </div>
 
 <script>
+// ─── PARTY COLORS (mutable — updated by color pickers) ────────────────────────
+let partyColors={us:'#2563eb',them:'#059669',joint:'#d97706'};
+
+function setPartyColor(party,color){
+  partyColors[party]=color;
+  // Keep color picker in sync
+  const el=document.getElementById('color-'+party);
+  if(el)el.value=color;
+  // Re-render immediately if a plan is loaded
+  if(lastParsed)renderGanttFromData(lastParsed);
+}
+
 // ─── DATE UTILS ───────────────────────────────────────────────────────────────
 const MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
 const pad=n=>String(n).padStart(2,'0');
@@ -641,7 +687,7 @@ function parsePlan(text){
           msEnd=dr.start;
         }
       }
-      currentMs={id:uid(),name:msName,startDate:msStart?iso(msStart):'',endDate:msEnd?iso(msEnd):'',color:MS_COLORS[milestones.length%MS_COLORS.length],_explicitStart:!!msStart};
+      currentMs={id:uid(),name:msName,startDate:msStart?iso(msStart):'',endDate:msEnd?iso(msEnd):'',color:MS_COLORS[milestones.length%MS_COLORS.length],party:'us',owner:'',_explicitStart:!!msStart};
       milestones.push(currentMs);
       lastTaskId=null;
       continue;
@@ -799,7 +845,7 @@ function renderGanttFromData(data){
   const showToday=today>=projStart&&today<timelineEnd;
   const todayPct=pct(today);
 
-  const BAR={us:'#2563eb',them:'#059669',joint:'#d97706'};
+  const BAR=partyColors;
   const PARTY_LABELS={us:ourTeam,them:theirTeam,joint:'Joint'};
 
   // Dynamic min-width: label col (220px) + at least 110px per month or 68px per week
@@ -864,21 +910,24 @@ function renderGanttFromData(data){
       if(taskStarts.length) effectiveStart=new Date(Math.min(...taskStarts.map(d=>+d)));
     }
 
+    // Phase color: follow assigned party color if party is set, else use auto palette color
+    const phColor = m.party && partyColors[m.party] ? partyColors[m.party] : m.color;
+
     const showBar=effectiveStart&&msEnd;
     const phBarStyle=showBar?barStyle(iso(effectiveStart),iso(msEnd)):'';
     const phEndPct=msEnd?pct(addDays(msEnd,1)):null;
 
     const phaseBar=msEnd?`
       ${showBar?`
-        <div class="phase-bar"  style="${phBarStyle}background:${m.color};"></div>
-        <div class="phase-bar-border" style="${phBarStyle}border-color:${m.color};"></div>
+        <div class="phase-bar"  style="${phBarStyle}background:${phColor};"></div>
+        <div class="phase-bar-border" style="${phBarStyle}border-color:${phColor};"></div>
       `:''}
-      <div class="ms-diamond" style="left:${phEndPct.toFixed(2)}%;background:${m.color};"></div>
+      <div class="ms-diamond" style="left:${phEndPct.toFixed(2)}%;background:${phColor};"></div>
     `:'';
 
     ganttRows+=`<div class="gantt-phase-row">
       <div class="gantt-phase-label" onclick="openPhaseEdit('${m.id}')" title="Click to edit phase">
-        <div class="ph-name" style="color:${m.color}">${esc(m.name)}</div>
+        <div class="ph-name" style="color:${phColor}">${esc(m.name)}</div>
         <div class="ph-dates">${effectiveStart?fmtShort(effectiveStart):'?'} → ${msEnd?fmtShort(msEnd):'?'}</div>
         <div class="ph-edit-hint">✎ edit phase</div>
       </div>
@@ -900,9 +949,16 @@ function renderGanttFromData(data){
   }
 
   const dur=Math.ceil((projEnd-projStart)/86400000/7);
+  const totalTasks=tasks.filter(t=>!t.isSubtask).length;
   const usTasks=tasks.filter(t=>t.party==='us'&&!t.isSubtask).length;
   const themTasks=tasks.filter(t=>t.party==='them'&&!t.isSubtask).length;
   const jointTasks=tasks.filter(t=>t.party==='joint'&&!t.isSubtask).length;
+  const usPhases=milestones.filter(m=>m.party==='us').length;
+  const themPhases=milestones.filter(m=>m.party==='them').length;
+  const jointPhases=milestones.filter(m=>m.party==='joint').length;
+
+  // Summary card helper — only renders if count > 0
+  const card=(count,label,color)=>count>0?`<div class="summary-card"><div class="val"${color?` style="color:${color}"`:''}>${count}</div><div class="lbl">${label}</div></div>`:'';
 
   mainArea.innerHTML=`
     <div class="plan-header">
@@ -921,16 +977,19 @@ function renderGanttFromData(data){
       </div>
     </div>
     <div class="summary-row">
-      <div class="summary-card"><div class="val">${tasks.filter(t=>!t.isSubtask).length}</div><div class="lbl">Tasks</div></div>
-      <div class="summary-card"><div class="val">${milestones.length}</div><div class="lbl">Phases</div></div>
-      <div class="summary-card"><div class="val" style="color:#2563eb">${usTasks}</div><div class="lbl">${esc(ourTeam)}</div></div>
-      <div class="summary-card"><div class="val" style="color:#059669">${themTasks}</div><div class="lbl">${esc(theirTeam)}</div></div>
-      ${jointTasks?`<div class="summary-card"><div class="val" style="color:#d97706">${jointTasks}</div><div class="lbl">Joint</div></div>`:''}
+      ${card(totalTasks,'Tasks',null)}
+      ${card(milestones.length,'Phases',null)}
+      ${card(usTasks,esc(ourTeam)+' Tasks',partyColors.us)}
+      ${card(themTasks,esc(theirTeam)+' Tasks',partyColors.them)}
+      ${card(jointTasks,'Joint Tasks',partyColors.joint)}
+      ${card(usPhases,esc(ourTeam)+' Phases',partyColors.us)}
+      ${card(themPhases,esc(theirTeam)+' Phases',partyColors.them)}
+      ${card(jointPhases,'Joint Phases',partyColors.joint)}
     </div>
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>${esc(ourTeam)}</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>${esc(theirTeam)}</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Joint</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${partyColors.us}"></div>${esc(ourTeam)}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${partyColors.them}"></div>${esc(theirTeam)}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${partyColors.joint}"></div>Joint</div>
       ${showToday?`<div class="legend-item"><div style="width:2px;height:13px;background:#ef4444;border-radius:1px;"></div>Today</div>`:''}
     </div>
     <div class="gantt-wrap"><div class="gantt-inner" style="min-width:${ganttMinWidth}px;">
@@ -970,6 +1029,11 @@ function buildPlan(){
   lastParsed=data;
   // Update phase dropdown in quick-add task form
   updatePhaseDropdown(data.milestones);
+  // Sync brand color labels to team names
+  const ulEl=document.getElementById('color-label-us');
+  const tlEl=document.getElementById('color-label-them');
+  if(ulEl)ulEl.textContent=data.ourTeam||'DocuSign';
+  if(tlEl)tlEl.textContent=data.theirTeam||'Customer';
   if(data.errors.length){errEl.innerHTML=`<strong>Parsing notes:</strong><ul>${data.errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;errEl.className='parse-errors show';}
   if(data.tasks.length||data.milestones.length){
     prevTxt.textContent=`Parsed ${data.milestones.length} phase${data.milestones.length!==1?'s':''} and ${data.tasks.length} task${data.tasks.length!==1?'s':''}.`;
@@ -1093,11 +1157,13 @@ function openTaskEdit(taskId){
   if(!t)return;
   _editingTaskId=taskId;
 
-  // Badge label
-  const PARTY_BADGE={us:{label:lastParsed.ourTeam||'DocuSign',bg:'#dbeafe',fg:'#1e40af'},them:{label:lastParsed.theirTeam||'Customer',bg:'#dcfce7',fg:'#166534'},joint:{label:'Joint',bg:'#fef3c7',fg:'#92400e'}};
-  const badgeInfo=PARTY_BADGE[t.party]||PARTY_BADGE.us;
+  // Badge label — tint from party color
+  const partyLabels={us:lastParsed.ourTeam||'DocuSign',them:lastParsed.theirTeam||'Customer',joint:'Joint'};
   const badge=document.getElementById('editBadge');
-  badge.textContent=badgeInfo.label;badge.style.background=badgeInfo.bg;badge.style.color=badgeInfo.fg;
+  const pc=partyColors[t.party||'us']||partyColors.us;
+  badge.textContent=partyLabels[t.party||'us'];
+  badge.style.background=pc+'22'; // 13% opacity tint
+  badge.style.color=pc;
 
   // Party buttons — update labels from plan data
   document.getElementById('edit-pb-us').textContent=lastParsed.ourTeam||'DocuSign';
@@ -1123,12 +1189,14 @@ function setEditParty(p){
     if(!btn)return;
     btn.className='party-btn'+(k===p?' '+colors[k]:'');
   });
-  // Update badge colour live
+  // Update badge colour live from partyColors
   if(!lastParsed)return;
-  const PARTY_BADGE={us:{label:lastParsed.ourTeam||'DocuSign',bg:'#dbeafe',fg:'#1e40af'},them:{label:lastParsed.theirTeam||'Customer',bg:'#dcfce7',fg:'#166534'},joint:{label:'Joint',bg:'#fef3c7',fg:'#92400e'}};
+  const pLabels={us:lastParsed.ourTeam||'DocuSign',them:lastParsed.theirTeam||'Customer',joint:'Joint'};
   const b=document.getElementById('editBadge');
-  const info=PARTY_BADGE[p]||PARTY_BADGE.us;
-  b.textContent=info.label;b.style.background=info.bg;b.style.color=info.fg;
+  const pc2=partyColors[p]||partyColors.us;
+  b.textContent=pLabels[p]||p;
+  b.style.background=pc2+'22';
+  b.style.color=pc2;
 }
 
 function saveTaskEdit(){
@@ -1225,40 +1293,25 @@ function barDragEnd(e){
 
 // ─── PHASE EDIT MODAL ────────────────────────────────────────────────────────
 let _editingPhaseId=null;
-let _editPhaseColor='#7c3aed';
-
-const PHASE_COLORS=['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#0891b2','#be185d','#0f766e','#ea580c','#4f46e5'];
 
 function openPhaseEdit(phaseId){
   if(!lastParsed)return;
   const m=lastParsed.milestones.find(x=>x.id===phaseId);
   if(!m)return;
   _editingPhaseId=phaseId;
-  _editPhaseColor=m.color||'#7c3aed';
 
   document.getElementById('edit-phase-name').value=m.name||'';
   document.getElementById('edit-phase-owner').value=m.owner||'';
   document.getElementById('edit-phase-start').value=m.startDate||'';
   document.getElementById('edit-phase-end').value=m.endDate||'';
 
-  // Party select — update labels and set value
+  // Party select — update labels from plan team names
   const sel=document.getElementById('edit-phase-party');
   sel.options[0].text=lastParsed.ourTeam||'DocuSign';
   sel.options[1].text=lastParsed.theirTeam||'Customer';
   sel.value=m.party||'us';
 
-  // Color swatches
-  const sc=document.getElementById('phaseColorSwatches');
-  sc.innerHTML=PHASE_COLORS.map(c=>`<div class="color-swatch${c===_editPhaseColor?' selected':''}" style="background:${c};" onclick="selectPhaseColor('${c}')" title="${c}"></div>`).join('');
-
   document.getElementById('phaseEditOverlay').classList.add('open');
-}
-
-function selectPhaseColor(c){
-  _editPhaseColor=c;
-  document.querySelectorAll('#phaseColorSwatches .color-swatch').forEach(el=>{
-    el.classList.toggle('selected',el.style.background===c||el.style.backgroundColor===c);
-  });
 }
 
 function savePhaseEdit(){
@@ -1269,7 +1322,7 @@ function savePhaseEdit(){
   if(newName)m.name=newName;
   m.owner=document.getElementById('edit-phase-owner').value.trim();
   m.party=document.getElementById('edit-phase-party').value;
-  m.color=_editPhaseColor;
+  // color is now auto-derived from party in the renderer, no manual override needed
   const newStart=document.getElementById('edit-phase-start').value;
   const newEnd=document.getElementById('edit-phase-end').value;
   if(newStart){m.startDate=newStart;m._explicitStart=true;}
@@ -1345,6 +1398,181 @@ Phase: Go Live | ${d(42)} - ${d(56)}
 - Final sign-off, joint (Both teams), ${d(55)} - ${d(56)}`;
   buildPlan();
 }
+
+// ─── EXPORT TO PPTX (Google Slides) ──────────────────────────────────────────
+async function exportToPptx(){
+  if(!lastParsed){alert('Build a plan first before exporting.');return;}
+  const btn=document.getElementById('btn-export');
+  const origHtml=btn.innerHTML;
+  btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-6.2-8.55"/></svg> Exporting…';
+  btn.disabled=true;
+
+  // Lazy-load libraries if not yet present
+  await Promise.all([
+    typeof PptxGenJS==='undefined'?loadScript('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundled.js'):Promise.resolve(),
+    typeof html2canvas==='undefined'?loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'):Promise.resolve()
+  ]);
+
+  try{
+    const{planTitle,planGoal,ourTeam,theirTeam,projStart,projEnd,milestones,tasks}=lastParsed;
+    const pptx=new PptxGenJS();
+    pptx.layout='LAYOUT_WIDE'; // 13.33" × 7.5"
+    pptx.title=planTitle;
+
+    const hx=c=>(c||'#374151').replace('#',''); // strip # for pptxgenjs
+    const dur=Math.ceil((projEnd-projStart)/86400000/7);
+    const partyLabel=p=>p==='us'?ourTeam:p==='them'?theirTeam:'Joint';
+
+    // ── Shared helpers ──────────────────────────────────────────────────────
+    function addAccentBar(slide){
+      slide.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.07,fill:{color:hx(partyColors.us)},line:{type:'none'}});
+    }
+    function addSlideTitle(slide,text){
+      slide.addText(text,{x:0.4,y:0.15,w:12.5,h:0.55,fontSize:21,bold:true,color:'111827',fontFace:'Calibri'});
+    }
+
+    // ── SLIDE 1: COVER ──────────────────────────────────────────────────────
+    const s1=pptx.addSlide();
+    s1.background={color:'FFFFFF'};
+    addAccentBar(s1);
+
+    // Coloured left stripe
+    s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.25,h:7.5,fill:{color:hx(partyColors.us)},line:{type:'none'}});
+
+    s1.addText(planTitle,{x:0.65,y:1.1,w:11.8,h:1.6,fontSize:36,bold:true,color:'111827',fontFace:'Calibri',wrap:true});
+    if(planGoal){
+      s1.addText(planGoal,{x:0.65,y:2.85,w:11.8,h:0.8,fontSize:17,color:'6b7280',fontFace:'Calibri',wrap:true});
+    }
+
+    s1.addShape(pptx.ShapeType.line,{x:0.65,y:3.85,w:11.8,h:0,line:{color:'E5E7EB',width:1}});
+
+    s1.addText(` ${fmtDate(projStart)}  →  ${fmtDate(projEnd)}`,{x:0.65,y:4.1,w:7,h:0.4,fontSize:14,color:'374151',fontFace:'Calibri'});
+    s1.addText(`${dur} week${dur!==1?'s':''}`,{x:7.8,y:4.1,w:2.5,h:0.4,fontSize:14,color:'374151',fontFace:'Calibri'});
+    s1.addText(`${ourTeam}  ↔  ${theirTeam}`,{x:0.65,y:4.65,w:9,h:0.45,fontSize:15,bold:true,color:'111827',fontFace:'Calibri'});
+
+    // Legend swatches
+    let lx=0.65;
+    [['us',ourTeam],['them',theirTeam],['joint','Joint']].forEach(([k,lbl])=>{
+      s1.addShape(pptx.ShapeType.rect,{x:lx,y:5.55,w:0.17,h:0.17,fill:{color:hx(partyColors[k])},line:{type:'none'}});
+      s1.addText(lbl,{x:lx+0.24,y:5.52,w:1.7,h:0.24,fontSize:11,color:'374151',fontFace:'Calibri'});
+      lx+=2.1;
+    });
+
+    // Stats row
+    const statsData=[
+      {n:tasks.filter(t=>!t.isSubtask).length,l:'Tasks',c:'374151'},
+      {n:milestones.length,l:'Phases',c:'374151'},
+      {n:tasks.filter(t=>t.party==='us'&&!t.isSubtask).length,l:ourTeam,c:hx(partyColors.us)},
+      {n:tasks.filter(t=>t.party==='them'&&!t.isSubtask).length,l:theirTeam,c:hx(partyColors.them)},
+      {n:tasks.filter(t=>t.party==='joint'&&!t.isSubtask).length,l:'Joint',c:hx(partyColors.joint)},
+    ].filter(s=>s.n>0);
+    statsData.forEach((s,i)=>{
+      const sx=0.65+i*2.2;
+      s1.addText(String(s.n),{x:sx,y:6.2,w:1.8,h:0.55,fontSize:28,bold:true,color:s.c,fontFace:'Calibri',align:'center'});
+      s1.addText(s.l,{x:sx,y:6.75,w:1.8,h:0.3,fontSize:10,color:'9CA3AF',fontFace:'Calibri',align:'center'});
+    });
+
+    // ── SLIDE 2: GANTT (screenshot) ──────────────────────────────────────────
+    const s2=pptx.addSlide();
+    s2.background={color:'FFFFFF'};
+    addAccentBar(s2);
+    addSlideTitle(s2,'Timeline');
+
+    const ganttInner=document.querySelector('.gantt-inner');
+    if(ganttInner){
+      const wrap=document.querySelector('.gantt-wrap');
+      const prevOverflow=wrap.style.overflow;
+      wrap.style.overflow='visible';
+      const canvas=await html2canvas(ganttInner,{
+        scale:1.8,backgroundColor:'#ffffff',
+        useCORS:true,logging:false,
+        width:ganttInner.scrollWidth,
+        height:ganttInner.scrollHeight
+      });
+      wrap.style.overflow=prevOverflow;
+      const availW=12.53,availH=6.4;
+      const ratio=canvas.height/canvas.width;
+      let iw=availW,ih=iw*ratio;
+      if(ih>availH){ih=availH;iw=ih/ratio;}
+      s2.addImage({data:canvas.toDataURL('image/png'),x:(13.33-iw)/2,y:0.85,w:iw,h:ih});
+    }
+
+    // ── SLIDE 3: PHASES TABLE ────────────────────────────────────────────────
+    if(milestones.length>0){
+      const s3=pptx.addSlide();
+      s3.background={color:'FFFFFF'};
+      addAccentBar(s3);
+      addSlideTitle(s3,'Phases');
+      const hdr={bold:true,color:'FFFFFF',fill:{color:'374151'},fontFace:'Calibri',fontSize:11,border:{type:'solid',color:'374151',pt:0}};
+      const rows=[[
+        {text:'Phase',options:{...hdr}},{text:'Party',options:{...hdr}},{text:'Owner',options:{...hdr}},
+        {text:'Start',options:{...hdr}},{text:'End',options:{...hdr}},{text:'Tasks',options:{...hdr,align:'center'}},
+      ],
+      ...milestones.map(m=>{
+        const c=hx(partyColors[m.party]||'#7c3aed');
+        const pt=tasks.filter(t=>t.msId===m.id&&!t.isSubtask).length;
+        return[
+          {text:m.name,options:{bold:true,color:c,fontFace:'Calibri',fontSize:11}},
+          {text:partyLabel(m.party),options:{fontFace:'Calibri',fontSize:11}},
+          {text:m.owner||'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:m.startDate?fmtShort(fromIso(m.startDate)):'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:m.endDate?fmtShort(fromIso(m.endDate)):'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:String(pt),options:{fontFace:'Calibri',fontSize:11,align:'center'}},
+        ];
+      })];
+      s3.addTable(rows,{x:0.4,y:0.88,w:12.53,rowH:0.42,colW:[3.6,1.8,2.5,1.7,1.7,1.23],
+        border:{type:'solid',color:'E5E7EB',pt:0.5},autoPage:true});
+    }
+
+    // ── SLIDE 4: TASKS TABLE ─────────────────────────────────────────────────
+    const mainTasks=tasks.filter(t=>!t.isSubtask);
+    if(mainTasks.length>0){
+      const s4=pptx.addSlide();
+      s4.background={color:'FFFFFF'};
+      addAccentBar(s4);
+      addSlideTitle(s4,'Tasks');
+      const hdr2={bold:true,color:'FFFFFF',fill:{color:'374151'},fontFace:'Calibri',fontSize:11};
+      const trows=[[
+        {text:'Task',options:{...hdr2}},{text:'Phase',options:{...hdr2}},{text:'Party',options:{...hdr2}},
+        {text:'Owner',options:{...hdr2}},{text:'Start',options:{...hdr2}},{text:'End',options:{...hdr2}},
+      ],
+      ...mainTasks.map(t=>{
+        const c=hx(partyColors[t.party]||'#6b7280');
+        const ph=milestones.find(m=>m.id===t.msId);
+        return[
+          {text:t.name,options:{color:c,fontFace:'Calibri',fontSize:11}},
+          {text:ph?ph.name:'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:partyLabel(t.party),options:{fontFace:'Calibri',fontSize:11}},
+          {text:t.owner||'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:t.start?fmtShort(fromIso(t.start)):'—',options:{fontFace:'Calibri',fontSize:11}},
+          {text:t.end?fmtShort(fromIso(t.end)):'—',options:{fontFace:'Calibri',fontSize:11}},
+        ];
+      })];
+      s4.addTable(trows,{x:0.4,y:0.88,w:12.53,rowH:0.38,colW:[3.4,2.1,1.8,2.0,1.6,1.63],
+        border:{type:'solid',color:'E5E7EB',pt:0.5},autoPage:true});
+    }
+
+    // ── DOWNLOAD ────────────────────────────────────────────────────────────
+    const fname=(planTitle||'mutual-action-plan').replace(/[^\w\s-]/g,'').trim()||'mutual-action-plan';
+    await pptx.writeFile({fileName:fname+'.pptx'});
+
+  }catch(err){
+    console.error('Export error:',err);
+    alert('Export failed — check console for details.\n\n'+err.message);
+  }finally{
+    btn.innerHTML=origHtml;
+    btn.disabled=false;
+  }
+}
+
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Failed to load: '+src));
+    document.head.appendChild(s);
+  });
+}
 </script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 </body>
 </html>
