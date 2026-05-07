@@ -93,7 +93,7 @@
 
   /* PLAN HEADER */
   .plan-header{margin-bottom:20px;}
-  .plan-header h1{font-size:21px;font-weight:700;}
+  .plan-header h1{font-size:28px;font-weight:700;}
   .plan-header .subtitle{font-size:13px;color:var(--gray-500);margin-top:4px;max-width:620px;}
   .plan-meta{display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;}
   .plan-meta-item{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--gray-600);}
@@ -115,7 +115,7 @@
   .gantt-inner{min-width:680px;padding-right:72px;}
 
   .gantt-header{display:flex;border-bottom:2px solid var(--gray-200);background:var(--gray-50);position:sticky;top:0;z-index:10;}
-  .gantt-label-col{width:220px;min-width:220px;padding:9px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);border-right:1px solid var(--gray-200);}
+  .gantt-label-col{width:160px;min-width:160px;padding:9px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);border-right:1px solid var(--gray-200);}
   .gantt-timeline-col{flex:1;position:relative;}
   .gantt-weeks{display:flex;height:100%;}
   .gantt-week{flex:1;padding:9px 5px;font-size:10px;font-weight:500;color:var(--gray-500);border-right:1px solid var(--gray-200);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -123,7 +123,7 @@
 
   /* PHASE ROW */
   .gantt-phase-row{display:flex;border-top:2px solid var(--gray-200);border-bottom:1px solid var(--gray-200);}
-  .gantt-phase-label{width:220px;min-width:220px;padding:9px 14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
+  .gantt-phase-label{width:160px;min-width:160px;padding:9px 14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
   .gantt-phase-label .ph-name{font-size:12px;font-weight:700;}
   .gantt-phase-label .ph-dates{font-size:10.5px;color:var(--gray-400);margin-top:1px;}
   .gantt-phase-timeline{flex:1;position:relative;min-height:38px;display:flex;align-items:center;overflow:hidden;}
@@ -141,8 +141,8 @@
   .gantt-row:last-child{border-bottom:none;}
   .gantt-row:hover{background:rgba(0,0,0,.018);}
 
-  .gantt-task-label{width:220px;min-width:220px;padding:6px 12px 6px 22px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
-  .gantt-task-label.subtask{padding-left:36px;}
+  .gantt-task-label{width:160px;min-width:160px;padding:6px 12px 6px 16px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--gray-200);}
+  .gantt-task-label.subtask{padding-left:28px;}
   .gantt-task-label .task-name{font-size:12px;font-weight:500;color:var(--gray-800);line-height:1.3;}
   .gantt-task-label .task-owner{font-size:10px;color:var(--gray-400);margin-top:1px;}
   .gantt-task-label.subtask .task-name{font-size:11px;font-weight:400;color:var(--gray-600);}
@@ -848,8 +848,8 @@ function renderGanttFromData(data){
   const BAR=partyColors;
   const PARTY_LABELS={us:ourTeam,them:theirTeam,joint:'Joint'};
 
-  // Dynamic min-width: label col (220px) + at least 110px per month or 68px per week
-  const ganttMinWidth=220+colData.length*(viewMode==='month'?110:68)+72;
+  // Dynamic min-width: label col (160px) + at least 82px per month or 54px per week
+  const ganttMinWidth=160+colData.length*(viewMode==='month'?82:54)+72;
 
   // Absolutely positioned columns — same coordinate system as bars.
   // colData drives both the header labels and the grid lines in every row.
